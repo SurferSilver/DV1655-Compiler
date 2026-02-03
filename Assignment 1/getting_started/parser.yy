@@ -229,15 +229,15 @@ OPTIONAL_NEWLINE:
 var:
   VOLATILE ID COLON type
   {
-    $$ = new Node("VarDecl","",yylineno);
+    $$ = new Node("Var","",yylineno);
     $$->children.push_back(new Node("Volatile","",yylineno));
-    $$->children.push_back(new Node("ID",$2,yylineno));
+    $$->children.push_back(new Node("Id",$2,yylineno));
     $$->children.push_back($4);
   }
-  | ID COLON type 
+  | ID COLON type
     {
-      $$ = new Node("VarDecl","",yylineno);
-      $$->children.push_back(new Node("ID",$1,yylineno));
+      $$ = new Node("Var","",yylineno);
+      $$->children.push_back(new Node("Id",$1,yylineno));
       $$->children.push_back($3);
     }
   ;
@@ -251,9 +251,20 @@ statement:  var ASSIGNOP expression OPTIONAL_NEWLINE
             {
               $$ = new Node("AssignStatement", "", yylineno);
               $$->children.push_back($1);
-              $$->children.push_back(new Node("Id", $2, yylineno));
               $$->children.push_back($3);
               $$->children.push_back($4);
+            }
+          | ID ASSIGNOP expression OPTIONAL_NEWLINE
+            {
+              $$ = new Node("AssignStatement", "", yylineno);
+              $$->children.push_back(new Node("Id", $1, yylineno));
+              $$->children.push_back($3);
+              $$->children.push_back($4);
+            }
+          | var OPTIONAL_NEWLINE
+            {
+              $$ = new Node("VarDeclaration", "", yylineno);
+              $$->children.push_back($1);
             }
           | PRINT LP ID RP
             {
