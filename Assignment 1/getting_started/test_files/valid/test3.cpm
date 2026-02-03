@@ -1,9 +1,9 @@
 main(): int {
-  volatile int n
+  volatile n : int
   read(n)
 
-  volatile int x := 1
-  volatile int i := 2
+  volatile x : int := 1
+  volatile i : int := 2
 
   for (i := 2, i <= n, i := i + 1) {
     x := x * i

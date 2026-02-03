@@ -3,7 +3,7 @@ class AST {
       volatile A : boolean := false
       volatile B : boolean := true
   
-      # The following if-statements should generate the same tree.
+      // The following if-statements should generate the same tree.
   
       if (A)
         if (B)

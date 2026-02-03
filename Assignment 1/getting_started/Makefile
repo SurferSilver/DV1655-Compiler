@@ -13,4 +13,5 @@ clean:
 		rm -R compiler.dSYM
 test:
 	./compiler test.txt
-	
+compile-valid:
+	./compiler test_files/valid/test$(test).cpm

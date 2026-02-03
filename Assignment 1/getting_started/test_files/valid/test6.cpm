@@ -1,12 +1,3 @@
-main(): int {
-  fibonacci : Fibonacci := Fibonacci()
-  volatile int n := 1
-  for (n := 1, n <= 16, n := n + 1) {
-    print(fibonacci.fib(n))
-    }
-  return 0
-}
-
 class Fibonacci {
   fib(n : int): int {
     if (n < 3) {
@@ -17,4 +8,11 @@ class Fibonacci {
   }
 }
 
- 
+main(): int {
+  fibonacci : Fibonacci := Fibonacci()
+  volatile n : int := 1
+  for (n := 1, n <= 16, n := n + 1) {
+    print(fibonacci.fib(n))
+    }
+  return 0
+}

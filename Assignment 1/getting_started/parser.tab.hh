@@ -49,7 +49,7 @@
 
   #include <string>
   #include "Node.h"
-  #define USE_LEX_ONLY true //change this macro to true if you want to isolate the lexer from the parser.
+  #define USE_LEX_ONLY false //change this macro to true if you want to isolate the lexer from the parser.
 
 #line 55 "parser.tab.hh"
 
@@ -383,20 +383,41 @@ namespace yy {
     union union_type
     {
       // root
+      // entry
+      // program
+      // type
       // expression
-      // statement
       // factor
+      // OPTIONAL_NEWLINE
+      // var
+      // statement
       char dummy1[sizeof (Node *)];
 
+      // INT
+      // ID
+      // TYPE_INT
+      // TYPE_FLOAT
+      // ASSIGNOP
+      // MAIN
+      // VOLATILE
+      // PRINT
+      // RETURN
+      // NEWLINE
+      // LP
+      // RP
+      // LBRACK
+      // RBRACK
+      // LBRACE
+      // RBRACE
+      // COMMA
+      // SEMICOLON
+      // COLON
       // PLUSOP
       // MINUSOP
       // MULTOP
       // DIVOP
-      // INT
-      // LP
-      // RP
-      // ID
-      // ASSIGNOP
+      // FLOAT
+      // EXPOP
       char dummy2[sizeof (std::string)];
     };
 
@@ -441,15 +462,31 @@ namespace yy {
     END = 0,                       // "end of file"
     YYerror = 256,                 // error
     YYUNDEF = 257,                 // "invalid token"
-    PLUSOP = 258,                  // PLUSOP
-    MINUSOP = 259,                 // MINUSOP
-    MULTOP = 260,                  // MULTOP
-    DIVOP = 261,                   // DIVOP
-    INT = 262,                     // INT
-    LP = 263,                      // LP
-    RP = 264,                      // RP
-    ID = 265,                      // ID
-    ASSIGNOP = 266                 // ASSIGNOP
+    INT = 258,                     // INT
+    ID = 259,                      // ID
+    TYPE_INT = 260,                // TYPE_INT
+    TYPE_FLOAT = 261,              // TYPE_FLOAT
+    ASSIGNOP = 262,                // ASSIGNOP
+    MAIN = 263,                    // MAIN
+    VOLATILE = 264,                // VOLATILE
+    PRINT = 265,                   // PRINT
+    RETURN = 266,                  // RETURN
+    NEWLINE = 267,                 // NEWLINE
+    LP = 268,                      // LP
+    RP = 269,                      // RP
+    LBRACK = 270,                  // LBRACK
+    RBRACK = 271,                  // RBRACK
+    LBRACE = 272,                  // LBRACE
+    RBRACE = 273,                  // RBRACE
+    COMMA = 274,                   // COMMA
+    SEMICOLON = 275,               // SEMICOLON
+    COLON = 276,                   // COLON
+    PLUSOP = 277,                  // PLUSOP
+    MINUSOP = 278,                 // MINUSOP
+    MULTOP = 279,                  // MULTOP
+    DIVOP = 280,                   // DIVOP
+    FLOAT = 281,                   // FLOAT
+    EXPOP = 282                    // EXPOP
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -466,25 +503,46 @@ namespace yy {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 12, ///< Number of tokens.
+        YYNTOKENS = 28, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // "end of file"
         S_YYerror = 1,                           // error
         S_YYUNDEF = 2,                           // "invalid token"
-        S_PLUSOP = 3,                            // PLUSOP
-        S_MINUSOP = 4,                           // MINUSOP
-        S_MULTOP = 5,                            // MULTOP
-        S_DIVOP = 6,                             // DIVOP
-        S_INT = 7,                               // INT
-        S_LP = 8,                                // LP
-        S_RP = 9,                                // RP
-        S_ID = 10,                               // ID
-        S_ASSIGNOP = 11,                         // ASSIGNOP
-        S_YYACCEPT = 12,                         // $accept
-        S_root = 13,                             // root
-        S_expression = 14,                       // expression
-        S_statement = 15,                        // statement
-        S_factor = 16                            // factor
+        S_INT = 3,                               // INT
+        S_ID = 4,                                // ID
+        S_TYPE_INT = 5,                          // TYPE_INT
+        S_TYPE_FLOAT = 6,                        // TYPE_FLOAT
+        S_ASSIGNOP = 7,                          // ASSIGNOP
+        S_MAIN = 8,                              // MAIN
+        S_VOLATILE = 9,                          // VOLATILE
+        S_PRINT = 10,                            // PRINT
+        S_RETURN = 11,                           // RETURN
+        S_NEWLINE = 12,                          // NEWLINE
+        S_LP = 13,                               // LP
+        S_RP = 14,                               // RP
+        S_LBRACK = 15,                           // LBRACK
+        S_RBRACK = 16,                           // RBRACK
+        S_LBRACE = 17,                           // LBRACE
+        S_RBRACE = 18,                           // RBRACE
+        S_COMMA = 19,                            // COMMA
+        S_SEMICOLON = 20,                        // SEMICOLON
+        S_COLON = 21,                            // COLON
+        S_PLUSOP = 22,                           // PLUSOP
+        S_MINUSOP = 23,                          // MINUSOP
+        S_MULTOP = 24,                           // MULTOP
+        S_DIVOP = 25,                            // DIVOP
+        S_FLOAT = 26,                            // FLOAT
+        S_EXPOP = 27,                            // EXPOP
+        S_YYACCEPT = 28,                         // $accept
+        S_root = 29,                             // root
+        S_entry = 30,                            // entry
+        S_program = 31,                          // program
+        S_type = 32,                             // type
+        S_expression = 33,                       // expression
+        S_factor = 34,                           // factor
+        S_OPTIONAL_NEWLINE = 35,                 // OPTIONAL_NEWLINE
+        S_var = 36,                              // var
+        S_statement = 37                         // statement
       };
     };
 
@@ -520,21 +578,42 @@ namespace yy {
         switch (this->kind ())
     {
       case symbol_kind::S_root: // root
+      case symbol_kind::S_entry: // entry
+      case symbol_kind::S_program: // program
+      case symbol_kind::S_type: // type
       case symbol_kind::S_expression: // expression
-      case symbol_kind::S_statement: // statement
       case symbol_kind::S_factor: // factor
+      case symbol_kind::S_OPTIONAL_NEWLINE: // OPTIONAL_NEWLINE
+      case symbol_kind::S_var: // var
+      case symbol_kind::S_statement: // statement
         value.move< Node * > (std::move (that.value));
         break;
 
+      case symbol_kind::S_INT: // INT
+      case symbol_kind::S_ID: // ID
+      case symbol_kind::S_TYPE_INT: // TYPE_INT
+      case symbol_kind::S_TYPE_FLOAT: // TYPE_FLOAT
+      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_MAIN: // MAIN
+      case symbol_kind::S_VOLATILE: // VOLATILE
+      case symbol_kind::S_PRINT: // PRINT
+      case symbol_kind::S_RETURN: // RETURN
+      case symbol_kind::S_NEWLINE: // NEWLINE
+      case symbol_kind::S_LP: // LP
+      case symbol_kind::S_RP: // RP
+      case symbol_kind::S_LBRACK: // LBRACK
+      case symbol_kind::S_RBRACK: // RBRACK
+      case symbol_kind::S_LBRACE: // LBRACE
+      case symbol_kind::S_RBRACE: // RBRACE
+      case symbol_kind::S_COMMA: // COMMA
+      case symbol_kind::S_SEMICOLON: // SEMICOLON
+      case symbol_kind::S_COLON: // COLON
       case symbol_kind::S_PLUSOP: // PLUSOP
       case symbol_kind::S_MINUSOP: // MINUSOP
       case symbol_kind::S_MULTOP: // MULTOP
       case symbol_kind::S_DIVOP: // DIVOP
-      case symbol_kind::S_INT: // INT
-      case symbol_kind::S_LP: // LP
-      case symbol_kind::S_RP: // RP
-      case symbol_kind::S_ID: // ID
-      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_FLOAT: // FLOAT
+      case symbol_kind::S_EXPOP: // EXPOP
         value.move< std::string > (std::move (that.value));
         break;
 
@@ -608,21 +687,42 @@ namespace yy {
 switch (yykind)
     {
       case symbol_kind::S_root: // root
+      case symbol_kind::S_entry: // entry
+      case symbol_kind::S_program: // program
+      case symbol_kind::S_type: // type
       case symbol_kind::S_expression: // expression
-      case symbol_kind::S_statement: // statement
       case symbol_kind::S_factor: // factor
+      case symbol_kind::S_OPTIONAL_NEWLINE: // OPTIONAL_NEWLINE
+      case symbol_kind::S_var: // var
+      case symbol_kind::S_statement: // statement
         value.template destroy< Node * > ();
         break;
 
+      case symbol_kind::S_INT: // INT
+      case symbol_kind::S_ID: // ID
+      case symbol_kind::S_TYPE_INT: // TYPE_INT
+      case symbol_kind::S_TYPE_FLOAT: // TYPE_FLOAT
+      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_MAIN: // MAIN
+      case symbol_kind::S_VOLATILE: // VOLATILE
+      case symbol_kind::S_PRINT: // PRINT
+      case symbol_kind::S_RETURN: // RETURN
+      case symbol_kind::S_NEWLINE: // NEWLINE
+      case symbol_kind::S_LP: // LP
+      case symbol_kind::S_RP: // RP
+      case symbol_kind::S_LBRACK: // LBRACK
+      case symbol_kind::S_RBRACK: // RBRACK
+      case symbol_kind::S_LBRACE: // LBRACE
+      case symbol_kind::S_RBRACE: // RBRACE
+      case symbol_kind::S_COMMA: // COMMA
+      case symbol_kind::S_SEMICOLON: // SEMICOLON
+      case symbol_kind::S_COLON: // COLON
       case symbol_kind::S_PLUSOP: // PLUSOP
       case symbol_kind::S_MINUSOP: // MINUSOP
       case symbol_kind::S_MULTOP: // MULTOP
       case symbol_kind::S_DIVOP: // DIVOP
-      case symbol_kind::S_INT: // INT
-      case symbol_kind::S_LP: // LP
-      case symbol_kind::S_RP: // RP
-      case symbol_kind::S_ID: // ID
-      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_FLOAT: // FLOAT
+      case symbol_kind::S_EXPOP: // EXPOP
         value.template destroy< std::string > ();
         break;
 
@@ -822,6 +922,291 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_INT (std::string v)
+      {
+        return symbol_type (token::INT, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_INT (const std::string& v)
+      {
+        return symbol_type (token::INT, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_ID (std::string v)
+      {
+        return symbol_type (token::ID, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_ID (const std::string& v)
+      {
+        return symbol_type (token::ID, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_TYPE_INT (std::string v)
+      {
+        return symbol_type (token::TYPE_INT, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_TYPE_INT (const std::string& v)
+      {
+        return symbol_type (token::TYPE_INT, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_TYPE_FLOAT (std::string v)
+      {
+        return symbol_type (token::TYPE_FLOAT, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_TYPE_FLOAT (const std::string& v)
+      {
+        return symbol_type (token::TYPE_FLOAT, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_ASSIGNOP (std::string v)
+      {
+        return symbol_type (token::ASSIGNOP, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_ASSIGNOP (const std::string& v)
+      {
+        return symbol_type (token::ASSIGNOP, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_MAIN (std::string v)
+      {
+        return symbol_type (token::MAIN, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_MAIN (const std::string& v)
+      {
+        return symbol_type (token::MAIN, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_VOLATILE (std::string v)
+      {
+        return symbol_type (token::VOLATILE, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_VOLATILE (const std::string& v)
+      {
+        return symbol_type (token::VOLATILE, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_PRINT (std::string v)
+      {
+        return symbol_type (token::PRINT, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_PRINT (const std::string& v)
+      {
+        return symbol_type (token::PRINT, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_RETURN (std::string v)
+      {
+        return symbol_type (token::RETURN, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_RETURN (const std::string& v)
+      {
+        return symbol_type (token::RETURN, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_NEWLINE (std::string v)
+      {
+        return symbol_type (token::NEWLINE, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_NEWLINE (const std::string& v)
+      {
+        return symbol_type (token::NEWLINE, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_LP (std::string v)
+      {
+        return symbol_type (token::LP, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_LP (const std::string& v)
+      {
+        return symbol_type (token::LP, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_RP (std::string v)
+      {
+        return symbol_type (token::RP, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_RP (const std::string& v)
+      {
+        return symbol_type (token::RP, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_LBRACK (std::string v)
+      {
+        return symbol_type (token::LBRACK, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_LBRACK (const std::string& v)
+      {
+        return symbol_type (token::LBRACK, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_RBRACK (std::string v)
+      {
+        return symbol_type (token::RBRACK, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_RBRACK (const std::string& v)
+      {
+        return symbol_type (token::RBRACK, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_LBRACE (std::string v)
+      {
+        return symbol_type (token::LBRACE, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_LBRACE (const std::string& v)
+      {
+        return symbol_type (token::LBRACE, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_RBRACE (std::string v)
+      {
+        return symbol_type (token::RBRACE, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_RBRACE (const std::string& v)
+      {
+        return symbol_type (token::RBRACE, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_COMMA (std::string v)
+      {
+        return symbol_type (token::COMMA, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_COMMA (const std::string& v)
+      {
+        return symbol_type (token::COMMA, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_SEMICOLON (std::string v)
+      {
+        return symbol_type (token::SEMICOLON, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_SEMICOLON (const std::string& v)
+      {
+        return symbol_type (token::SEMICOLON, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_COLON (std::string v)
+      {
+        return symbol_type (token::COLON, std::move (v));
+      }
+#else
+      static
+      symbol_type
+      make_COLON (const std::string& v)
+      {
+        return symbol_type (token::COLON, v);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_PLUSOP (std::string v)
       {
         return symbol_type (token::PLUSOP, std::move (v));
@@ -882,76 +1267,31 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_INT (std::string v)
+      make_FLOAT (std::string v)
       {
-        return symbol_type (token::INT, std::move (v));
+        return symbol_type (token::FLOAT, std::move (v));
       }
 #else
       static
       symbol_type
-      make_INT (const std::string& v)
+      make_FLOAT (const std::string& v)
       {
-        return symbol_type (token::INT, v);
+        return symbol_type (token::FLOAT, v);
       }
 #endif
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
-      make_LP (std::string v)
+      make_EXPOP (std::string v)
       {
-        return symbol_type (token::LP, std::move (v));
+        return symbol_type (token::EXPOP, std::move (v));
       }
 #else
       static
       symbol_type
-      make_LP (const std::string& v)
+      make_EXPOP (const std::string& v)
       {
-        return symbol_type (token::LP, v);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_RP (std::string v)
-      {
-        return symbol_type (token::RP, std::move (v));
-      }
-#else
-      static
-      symbol_type
-      make_RP (const std::string& v)
-      {
-        return symbol_type (token::RP, v);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_ID (std::string v)
-      {
-        return symbol_type (token::ID, std::move (v));
-      }
-#else
-      static
-      symbol_type
-      make_ID (const std::string& v)
-      {
-        return symbol_type (token::ID, v);
-      }
-#endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_ASSIGNOP (std::string v)
-      {
-        return symbol_type (token::ASSIGNOP, std::move (v));
-      }
-#else
-      static
-      symbol_type
-      make_ASSIGNOP (const std::string& v)
-      {
-        return symbol_type (token::ASSIGNOP, v);
+        return symbol_type (token::EXPOP, v);
       }
 #endif
 
@@ -1055,7 +1395,7 @@ switch (yykind)
 
 #if YYDEBUG
     // YYRLINE[YYN] -- Source line where rule number YYN was defined.
-    static const unsigned char yyrline_[];
+    static const short yyrline_[];
     /// Report on the debug stream that the rule \a r is going to be reduced.
     virtual void yy_reduce_print_ (int r) const;
     /// Print the state stack on the debug stream.
@@ -1282,9 +1622,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 26,     ///< Last index in yytable_.
-      yynnts_ = 5,  ///< Number of nonterminal symbols.
-      yyfinal_ = 12 ///< Termination state number.
+      yylast_ = 115,     ///< Last index in yytable_.
+      yynnts_ = 10,  ///< Number of nonterminal symbols.
+      yyfinal_ = 26 ///< Termination state number.
     };
 
 
@@ -1327,10 +1667,12 @@ switch (yykind)
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
-       5,     6,     7,     8,     9,    10,    11
+       5,     6,     7,     8,     9,    10,    11,    12,    13,    14,
+      15,    16,    17,    18,    19,    20,    21,    22,    23,    24,
+      25,    26,    27
     };
     // Last valid token kind.
-    const int code_max = 266;
+    const int code_max = 282;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -1349,21 +1691,42 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_root: // root
+      case symbol_kind::S_entry: // entry
+      case symbol_kind::S_program: // program
+      case symbol_kind::S_type: // type
       case symbol_kind::S_expression: // expression
-      case symbol_kind::S_statement: // statement
       case symbol_kind::S_factor: // factor
+      case symbol_kind::S_OPTIONAL_NEWLINE: // OPTIONAL_NEWLINE
+      case symbol_kind::S_var: // var
+      case symbol_kind::S_statement: // statement
         value.copy< Node * > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_INT: // INT
+      case symbol_kind::S_ID: // ID
+      case symbol_kind::S_TYPE_INT: // TYPE_INT
+      case symbol_kind::S_TYPE_FLOAT: // TYPE_FLOAT
+      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_MAIN: // MAIN
+      case symbol_kind::S_VOLATILE: // VOLATILE
+      case symbol_kind::S_PRINT: // PRINT
+      case symbol_kind::S_RETURN: // RETURN
+      case symbol_kind::S_NEWLINE: // NEWLINE
+      case symbol_kind::S_LP: // LP
+      case symbol_kind::S_RP: // RP
+      case symbol_kind::S_LBRACK: // LBRACK
+      case symbol_kind::S_RBRACK: // RBRACK
+      case symbol_kind::S_LBRACE: // LBRACE
+      case symbol_kind::S_RBRACE: // RBRACE
+      case symbol_kind::S_COMMA: // COMMA
+      case symbol_kind::S_SEMICOLON: // SEMICOLON
+      case symbol_kind::S_COLON: // COLON
       case symbol_kind::S_PLUSOP: // PLUSOP
       case symbol_kind::S_MINUSOP: // MINUSOP
       case symbol_kind::S_MULTOP: // MULTOP
       case symbol_kind::S_DIVOP: // DIVOP
-      case symbol_kind::S_INT: // INT
-      case symbol_kind::S_LP: // LP
-      case symbol_kind::S_RP: // RP
-      case symbol_kind::S_ID: // ID
-      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_FLOAT: // FLOAT
+      case symbol_kind::S_EXPOP: // EXPOP
         value.copy< std::string > (YY_MOVE (that.value));
         break;
 
@@ -1399,21 +1762,42 @@ switch (yykind)
     switch (this->kind ())
     {
       case symbol_kind::S_root: // root
+      case symbol_kind::S_entry: // entry
+      case symbol_kind::S_program: // program
+      case symbol_kind::S_type: // type
       case symbol_kind::S_expression: // expression
-      case symbol_kind::S_statement: // statement
       case symbol_kind::S_factor: // factor
+      case symbol_kind::S_OPTIONAL_NEWLINE: // OPTIONAL_NEWLINE
+      case symbol_kind::S_var: // var
+      case symbol_kind::S_statement: // statement
         value.move< Node * > (YY_MOVE (s.value));
         break;
 
+      case symbol_kind::S_INT: // INT
+      case symbol_kind::S_ID: // ID
+      case symbol_kind::S_TYPE_INT: // TYPE_INT
+      case symbol_kind::S_TYPE_FLOAT: // TYPE_FLOAT
+      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_MAIN: // MAIN
+      case symbol_kind::S_VOLATILE: // VOLATILE
+      case symbol_kind::S_PRINT: // PRINT
+      case symbol_kind::S_RETURN: // RETURN
+      case symbol_kind::S_NEWLINE: // NEWLINE
+      case symbol_kind::S_LP: // LP
+      case symbol_kind::S_RP: // RP
+      case symbol_kind::S_LBRACK: // LBRACK
+      case symbol_kind::S_RBRACK: // RBRACK
+      case symbol_kind::S_LBRACE: // LBRACE
+      case symbol_kind::S_RBRACE: // RBRACE
+      case symbol_kind::S_COMMA: // COMMA
+      case symbol_kind::S_SEMICOLON: // SEMICOLON
+      case symbol_kind::S_COLON: // COLON
       case symbol_kind::S_PLUSOP: // PLUSOP
       case symbol_kind::S_MINUSOP: // MINUSOP
       case symbol_kind::S_MULTOP: // MULTOP
       case symbol_kind::S_DIVOP: // DIVOP
-      case symbol_kind::S_INT: // INT
-      case symbol_kind::S_LP: // LP
-      case symbol_kind::S_RP: // RP
-      case symbol_kind::S_ID: // ID
-      case symbol_kind::S_ASSIGNOP: // ASSIGNOP
+      case symbol_kind::S_FLOAT: // FLOAT
+      case symbol_kind::S_EXPOP: // EXPOP
         value.move< std::string > (YY_MOVE (s.value));
         break;
 
@@ -1482,7 +1866,7 @@ switch (yykind)
 
 
 } // yy
-#line 1486 "parser.tab.hh"
+#line 1870 "parser.tab.hh"
 
 
 

@@ -1,8 +1,8 @@
 class Calculator {
 
   sumArray(values : int[]): int {
-    volatile int i := 0
-    volatile int total := 0
+    volatile i : int := 0
+    volatile total : int := 0
 
     for (i := 0, i < values.length, i := i + 1) {
       total := total + values[i]
@@ -13,7 +13,7 @@ class Calculator {
 }
 
 class Counter {
-  volatile int value
+  volatile value : int
 
   init(v : int): void {
     value := v
@@ -29,15 +29,15 @@ class Counter {
 }
 
 main(): int {
-    volatile int[] data := int[3, 1, 4, 1, 5]
-    volatile int sum := Calculator().sumArray(data)
+    volatile data : int[] := int[3, 1, 4, 1, 5]
+    volatile sum : int := Calculator().sumArray(data)
 
     print(sum)
 
-    volatile Counter c := Counter()
+    volatile c : Counter := Counter()
     c.init(0)
 
-    volatile int i := 0
+    volatile i : int := 0
     for (i := 0, i < data.length, i := i + 1) {
       c.inc()
     }

@@ -1,10 +1,10 @@
 main(): int {
-  volatile float[] list := float[5.0, 6.0, 1.0, 2.4, 2.3, 2.5, 9.0, 14.0, 2.0, 15.0, 6.0, 7.0, 8.0, 97.0]
-  volatile int n := list.length
+  volatile  list: float[] := float[5.0, 6.0, 1.0, 2.4, 2.3, 2.5, 9.0, 14.0, 2.0, 15.0, 6.0, 7.0, 8.0, 97.0]
+  volatile n : int := list.length
 
-  volatile int pass := 0
-  volatile int i := 0
-  volatile float tmp := 0.0
+  volatile pass : int := 0
+  volatile i : int := 0
+  volatile tmp : float := 0.0
 
   // Standard bubble sort with fixed passes (no while/repeat needed)
   for (pass := 0, pass < n, pass := pass + 1) {
