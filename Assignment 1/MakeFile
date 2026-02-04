@@ -1,3 +1,0 @@
-lex.yy.c: lexer.flex parser.tab.cc
-		flex lexer.flex
-		
