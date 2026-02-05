@@ -117,6 +117,7 @@
 %type <Node *> var
 %type <Node *> list_content
 %type <Node *> base_type
+%type <Node *> lvalue
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Grammar rules section */
@@ -251,22 +252,17 @@ expression: expression PLUSOP expression
               $$->children.push_back($1);
               $$->children.push_back($3);
             }
+            | base_type LBRACK list_content RBRACK
+            {
+              $$ = new Node("ListExpression","",yylineno);
+              $$->children.push_back($1);
+              $$->children.push_back($3);
+            }
             | ID LBRACK expression RBRACK
             {
               $$ = new Node("IndexExpression","",yylineno);
-              $$->children.push_back(new Node("Id", $1, yylineno));
+              $$->children.push_back(new Node("Id",$1,yylineno));
               $$->children.push_back($3);
-            }
-            | base_type LBRACK list_content RBRACK
-              {
-                $$ = new Node("ListExpression","",yylineno);
-                $$->children.push_back(new Node("Type", $1->value, yylineno));
-                $$->children.push_back($3);
-            }
-            | ID DOT LENGTH
-            {
-              $$ = new Node("LengthExpression","",yylineno);
-              $$->children.push_back(new Node("Id", $1, yylineno));
             }
             | factor      
             {
@@ -297,6 +293,11 @@ factor:     INT
               {
               $$ = new Node("Id", $1, yylineno);
               }
+            | ID DOT LENGTH
+              {
+                $$ = new Node("LengthExpression","",yylineno);
+                $$->children.push_back(new Node("Id",$1,yylineno));
+              }
           ;
 
 
@@ -321,19 +322,32 @@ var:
     }
  ;
 
- list_content:
-    expression
+list_content
+  : expression
+    {
+      $$ = new Node("ListContent","", yylineno);
+      $$->children.push_back($1);
+    }
+  | list_content COMMA expression
+    {
+      $$ = $1;
+      $$->children.push_back($3);
+    }
+  ;
+
+lvalue:
+    ID
       {
-        $$ = new Node("ListContent","", yylineno);
-        $$->children.push_back($1);
+        $$ = new Node("Id", $1, yylineno);
       }
-    | expression COMMA list_content
+    | ID LBRACK expression RBRACK
       {
-        $$ = new Node("ListContent","", yylineno);
-        $$->children.push_back($1);
+        $$ = new Node("IndexExpression","",yylineno);
+        $$->children.push_back(new Node("Id",$1,yylineno));
         $$->children.push_back($3);
       }
     ;
+
 
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
@@ -346,10 +360,10 @@ statement:  var ASSIGNOP expression
               $$->children.push_back($1);
               $$->children.push_back($3);
             }
-          | ID ASSIGNOP expression
+          | lvalue ASSIGNOP expression
             {
               $$ = new Node("AssignStatement", "", yylineno);
-              $$->children.push_back(new Node("Id", $1, yylineno));
+              $$->children.push_back($1);
               $$->children.push_back($3);
             }
           | var
@@ -357,10 +371,10 @@ statement:  var ASSIGNOP expression
               $$ = new Node("VarDeclaration", "", yylineno);
               $$->children.push_back($1);
             }
-          | PRINT LP ID RP
+          | PRINT LP lvalue RP
             {
               $$ = new Node("PrintStatement", "", yylineno);
-              $$->children.push_back(new Node("Id", $3, yylineno));
+              $$->children.push_back($3);
             }
           | READ LP ID RP
             {
