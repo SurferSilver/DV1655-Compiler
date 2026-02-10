@@ -17,6 +17,7 @@
 "float"                {if(USE_LEX_ONLY) {printf("TYPE_FLOAT ");} else {return yy::parser::make_TYPE_FLOAT(yytext);}}
 "length"                {if(USE_LEX_ONLY) {printf("LENGTH ");} else {return yy::parser::make_LENGTH(yytext);}}
 "class"                {if(USE_LEX_ONLY) {printf("CLASS ");} else {return yy::parser::make_CLASS(yytext);}}
+"break"                {if(USE_LEX_ONLY) {printf("BREAK ");} else {return yy::parser::make_BREAK(yytext);}}
 
 "("                     {if(USE_LEX_ONLY) {printf("LP ");} else {return yy::parser::make_LP(yytext);}}
 ")"                     {if(USE_LEX_ONLY) {printf("RP ");} else {return yy::parser::make_RP(yytext);}}
@@ -36,6 +37,7 @@
 "^"                     {if(USE_LEX_ONLY) {printf("EXPOP ");} else {return yy::parser::make_EXPOP(yytext);}}
 ":="                    {if(USE_LEX_ONLY) {printf("ASSIGNOP ");} else {return yy::parser::make_ASSIGNOP(yytext);}}
 
+"!"                     {if(USE_LEX_ONLY) {printf("NOTOP ");} else {return yy::parser::make_NOTOP(yytext);}}
 "<="                    {if(USE_LEX_ONLY) {printf("LEQOP ");} else {return yy::parser::make_LEQOP(yytext);}}
 ">="                    {if(USE_LEX_ONLY) {printf("GEQOP ");} else {return yy::parser::make_GEQOP(yytext);}}
 "<"                     {if(USE_LEX_ONLY) {printf("LTOP ");} else {return yy::parser::make_LTOP(yytext);}}

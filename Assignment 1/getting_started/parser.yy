@@ -51,7 +51,7 @@
 %token <std::string>LENGTH
 %token <std::string>CLASS
 %token <std::string>NEWLINE
-
+%token <std::string>BREAK
 
 /* Parentheses and braces */
 %token <std::string>LP
@@ -82,6 +82,7 @@
 %token <std::string>NEQOP
 %token <std::string>AND
 %token <std::string>OR
+%token <std::string>NOTOP
 
 /* Functions */
 %token <std::string>READ
@@ -94,7 +95,8 @@
 /* Used to resolve ambiguities in parsing expressions See https://www.gnu.org/software/bison/manual/bison.html#Precedence-Decl */ 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
-
+%nonassoc LOWER_THAN_ELSE
+%nonassoc ELSE
 %left AND OR
 %nonassoc LEQOP GEQOP LTOP GTOP EQOP NEQOP
 %left PLUSOP MINUSOP
@@ -133,6 +135,9 @@
 /* oklart */
 %type <Node *> primary
 %type <Node *> secondary
+%type <Node *> opt_for_init
+%type <Node *> opt_for_condition
+
 
 %type <Node *> params
 %type <Node *> opt_params
@@ -403,6 +408,12 @@ secondary:
         if ($3) call->children.push_back($3);
         $$ = call;
       }
+  | NOTOP primary
+      {
+        Node* notExpr = new Node("NotExpression","",yylineno);
+        notExpr->children.push_back($2);
+        $$ = notExpr;
+      }
   ;
 
 
@@ -531,6 +542,27 @@ list_content
     }
   ;
 
+
+opt_for_init:
+    { $$ = nullptr; }
+  | var 
+      { $$ = $1; }
+  | expression ASSIGNOP expression
+      {
+        Node* a = new Node("AssignStatement", "", yylineno);
+        a->children.push_back($1);
+        a->children.push_back($3);
+        $$ = a;
+      }
+  ;
+
+opt_for_condition:
+    { $$ = nullptr; }
+  | expression 
+      { $$ = $1; }
+  ;
+
+
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Statements
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
@@ -540,7 +572,11 @@ stmt_end:
   ;
 
 statement:
-        var stmt_end
+        program_block
+            {
+              $$ = $1;
+            }
+        |var stmt_end
             {
               $$ = new Node("VarDeclaration", "", yylineno);
               $$->children.push_back($1);
@@ -562,54 +598,37 @@ statement:
               $$ = new Node("ReadStatement", "", yylineno);
               $$->children.push_back($3);
             }
+        | BREAK stmt_end
+            {
+              $$ = new Node("BreakStatement", "", yylineno);
+            }
         | RETURN expression stmt_end
             {
               $$ = new Node("ReturnStatement", "", yylineno);
               $$->children.push_back($2);
             }
-        | FOR LP var COMMA expression COMMA ID ASSIGNOP expression RP program_block
+        | FOR LP opt_for_init COMMA opt_for_condition COMMA expression ASSIGNOP expression RP statement
             {
               $$ = new Node("ForStatement", "", yylineno);
+              
               Node* start_condition = new Node("start_condition", "", yylineno);
-              start_condition->children.push_back($3);
+              if ($3) start_condition->children.push_back($3);
               $$->children.push_back(start_condition);
 
               Node* end_condition = new Node("end_condition", "", yylineno);
-              end_condition->children.push_back($5);
+              if ($5) end_condition->children.push_back($5);
               $$->children.push_back(end_condition);
 
               Node* step = new Node("step", "", yylineno);
-              step->children.push_back(new Node("Id", $7, yylineno));
+              step->children.push_back($7);
               step->children.push_back($9);
               $$->children.push_back(step);
 
-              Node* end = new Node("end", "", yylineno);
-              end->children.push_back($11);
-              $$->children.push_back(end);
-            }
-        | FOR LP ID ASSIGNOP expression COMMA expression COMMA ID ASSIGNOP expression RP program_block
-            {
-              $$ = new Node("ForStatement", "", yylineno);
-
-              Node* start_condition = new Node("start_condition", "", yylineno);
-              start_condition->children.push_back(new Node("Id", $3, yylineno));
-              start_condition->children.push_back($5);
-              $$->children.push_back(start_condition);
-
-              Node* end_condition = new Node("end_condition", "", yylineno);
-              end_condition->children.push_back($7);
-              $$->children.push_back(end_condition);
-
-              Node* step = new Node("step", "", yylineno);
-              step->children.push_back(new Node("Id", $9, yylineno));
-              step->children.push_back($11);
-              $$->children.push_back(step);
-
               Node* block = new Node("block", "", yylineno);
-              block->children.push_back($13);
+              block->children.push_back($11);
               $$->children.push_back(block);
             }
-        | IF LP expression RP program_block
+        | IF LP expression RP statement %prec LOWER_THAN_ELSE
             {
               $$ = new Node("IfStatement", "", yylineno);
 
@@ -621,7 +640,7 @@ statement:
               then_branch->children.push_back($5);
               $$->children.push_back(then_branch);
             }
-        | IF LP expression RP program_block ELSE program_block
+        | IF LP expression RP statement ELSE statement
             {
               $$ = new Node("IfStatement", "", yylineno);
 
