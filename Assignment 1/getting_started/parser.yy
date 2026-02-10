@@ -49,6 +49,9 @@
 %token <std::string>IF
 %token <std::string>ELSE
 %token <std::string>LENGTH
+%token <std::string>CLASS
+%token <std::string>NEWLINE
+
 
 /* Parentheses and braces */
 %token <std::string>LP
@@ -107,17 +110,35 @@
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
 %type <Node *> root 
+%type <Node *> entry
+%type <Node *> var
 %type <Node *> expression 
-%type <Node *> factor 
 %type <Node *> statement
+%type <Node *> type
+%type <Node *> base_type
+
 %type <Node *> program
 %type <Node *> program_block
-%type <Node *> entry
-%type <Node *> type
-%type <Node *> var
+
 %type <Node *> list_content
-%type <Node *> base_type
-%type <Node *> lvalue
+%type <Node *> block_content
+
+%type <Node *> class_list
+%type <Node *> opt_class_list
+%type <Node *> class_content
+%type <Node *> class_block
+
+%type <Node *> method
+
+/* oklart */
+%type <Node *> primary
+%type <Node *> secondary
+
+%type <Node *> params
+%type <Node *> opt_params
+%type <Node *> param
+%type <Node *> opt_args
+%type <Node *> args
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Grammar rules section */
@@ -125,32 +146,121 @@
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 %%
 root:
-    entry END   { root = $1; }
-  | program END { root = $1; }
+    program END   { root = $1; }
   ;
 
-entry:
-    MAIN LP RP COLON type program_block
-      { 
-        $$ = $6;
+
+program:
+    opt_class_list opt_newlines entry
+  {
+    Node* prog = new Node("Program","",yylineno);
+    if ($1) prog->children.push_back($1);
+    prog->children.push_back($3);
+    $$ = prog;
+  }
+  | opt_class_list opt_newlines
+  {
+    Node* prog = new Node("Program","",yylineno);
+    if ($1) prog->children.push_back($1);
+    $$ = prog;
+  }
+  ;
+
+opt_newlines:
+  | opt_newlines NEWLINE
+  ;
+
+
+/*------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Classes
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+opt_class_list:
+    { $$ = nullptr; }
+  | class_list  { $$ = $1; }
+  ;
+
+class_list:
+    CLASS ID class_block 
+      {
+        Node* list = new Node("ClassList","",yylineno);
+        Node* cls  = new Node("Class",$2,yylineno);
+        cls->children.push_back($3);
+        list->children.push_back(cls);
+        $$ = list;
+      }
+  | class_list CLASS ID class_block 
+      {
+        $$ = $1;
+        Node* cls = new Node("Class",$3,yylineno);
+        cls->children.push_back($4);
+        $$->children.push_back(cls);
       }
   ;
 
-program_block:
-    LBRACE program RBRACE
+class_block:
+    LBRACE class_content RBRACE
       {
         $$ = $2;
       }
   ;
 
-program:
-    expression                { $$ = new Node("Program","", yylineno); $$->children.push_back($1); }
-  | statement                 { $$ = new Node("Program","", yylineno); $$->children.push_back($1); }
-  | program expression        { $$ = $1; $$->children.push_back($2); }
-  | program statement         { $$ = $1; $$->children.push_back($2); }
+class_content:
+      {
+        $$ = new Node("ClassContent","", yylineno);
+      }
+  | class_content var 
+      {
+        $$ = $1;
+        $$->children.push_back($2);
+      }
+  | class_content method 
+      {
+        $$ = $1;
+        $$->children.push_back($2);
+      }
+  | class_content NEWLINE
+      {
+        $$ = $1;
+      }
   ;
 
- base_type:
+
+/*------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Entry point and program structure
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+entry:
+    MAIN LP RP COLON TYPE_INT program_block
+      {
+        Node* mainNode = new Node("MainEntry","",yylineno);
+        mainNode->children.push_back(new Node("Type", $5, yylineno));
+        mainNode->children.push_back($6);
+        $$ = mainNode;
+      }
+  ;
+
+program_block:
+    LBRACE block_content RBRACE
+      {
+        $$ = $2;
+      }
+  ;
+
+block_content:
+    statement                      { $$ = new Node("BlockContent","", yylineno); $$->children.push_back($1); }
+  | block_content statement        { $$ = $1; $$->children.push_back($2); }
+  | NEWLINE                        { $$ = new Node("BlockContent","", yylineno); }
+  | block_content NEWLINE          { $$ = $1; }
+  ;
+
+
+/*------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Types
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+
+base_type:
     TYPE_INT                                { $$ = new Node("Type", $1, yylineno); }
   | TYPE_FLOAT                              { $$ = new Node("Type", $1, yylineno); }
 ;
@@ -171,136 +281,215 @@ type:
   ;
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Methods
+/*-------------------------------------------------------------------------------------------------------------------------------------------------*/
+
+method: 
+    ID LP opt_params RP COLON type program_block
+    {
+        Node* methodNode = new Node("Method", $1, yylineno);
+        if ($3) methodNode->children.push_back($3);
+        methodNode->children.push_back($6);
+        methodNode->children.push_back($7);
+        $$ = methodNode;
+      }
+  ;
+
+opt_params:
+    { $$ = nullptr; }
+  | params { $$ = $1; }
+  ;
+
+params:
+    param
+      {
+        $$ = new Node("ParameterList","",yylineno);
+        $$->children.push_back($1);
+      }
+  | params COMMA param
+      {
+        $$ = $1;
+        $$->children.push_back($3);
+      }
+  ;
+
+param:
+    ID COLON type
+      {
+        Node* p = new Node("Param","",yylineno);
+        p->children.push_back(new Node("Id",$1,yylineno));
+        p->children.push_back($3);
+        $$ = p;
+      }
+  ;
+
+opt_args:
+      { $$ = nullptr; }
+  | args
+      { $$ = $1; }
+  ;
+
+args:
+    expression
+      {
+        $$ = new Node("ArgList","",yylineno);
+        $$->children.push_back($1);
+      }
+  | args COMMA expression
+      {
+        $$ = $1;
+        $$->children.push_back($3);
+      }
+  ;
+
+
+/*------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* expression
 /*-------------------------------------------------------------------------------------------------------------------------------------------------*/
-expression: expression PLUSOP expression 
-            {      
-              $$ = new Node("AddExpression", "", yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression MINUSOP expression
-            {
-              $$ = new Node("SubExpression", "", yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression MULTOP expression 
-            {
-              $$ = new Node("MultExpression", "", yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression DIVOP expression 
-            {
-              $$ = new Node("DivExpression", "", yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression EXPOP expression 
-            {
-              $$ = new Node("ExpExpression", "", yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            |
-            expression LEQOP expression
-            {
-              $$ = new Node("LeqExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression GEQOP expression
-            {
-              $$ = new Node("GeqExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression LTOP expression
-            {
-              $$ = new Node("LtExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression GTOP expression
-            {
-              $$ = new Node("GtExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression EQOP expression
-            {
-              $$ = new Node("EqExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression NEQOP expression
-            {
-              $$ = new Node("NeqExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression AND expression
-            {
-              $$ = new Node("AndExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | expression OR expression
-            {
-              $$ = new Node("OrExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | base_type LBRACK list_content RBRACK
-            {
-              $$ = new Node("ListExpression","",yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-            | ID LBRACK expression RBRACK
-            {
-              $$ = new Node("IndexExpression","",yylineno);
-              $$->children.push_back(new Node("Id",$1,yylineno));
-              $$->children.push_back($3);
-            }
-            | factor      
-            {
-              $$ = $1; 
-            }
-            ;
 
-/*---------------------------------------------------------------------------------------------------------------------------------------------------- */
-/* factor / primary
-/*---------------------------------------------------------------------------------------------------------------------------------------------------- */
+primary:
+    INT
+      {
+        $$ = new Node("Int", $1, yylineno);
+      }
+  | FLOAT
+      {
+        $$ = new Node("Float", $1, yylineno);
+      }
+  | ID
+      {
+        $$ = new Node("Id", $1, yylineno);
+      }
+  | LP expression RP
+      {
+        $$ = $2;
+      }
+  | base_type LBRACK list_content RBRACK
+      {
+        $$ = new Node("ListExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  ;  
 
-factor:     INT           
-              { 
-              $$ = new Node("Int", $1, yylineno);
-              /* printf("r6 ");  Here we create a leaf node Int. The value of the leaf node is $1 */
-              }
-            | FLOAT         
-              {
-              $$ = new Node("Float", $1, yylineno);
-              /* printf("r11 ");  Here we create a leaf node Float. The value of the leaf node is $1 */
-              }
-            | LP expression RP 
-              {
-              $$ = $2;
-              /* printf("r7 ");  simply return the expression */
-              }  
-            | ID            
-              {
-              $$ = new Node("Id", $1, yylineno);
-              }
-            | ID DOT LENGTH
-              {
-                $$ = new Node("LengthExpression","",yylineno);
-                $$->children.push_back(new Node("Id",$1,yylineno));
-              }
-          ;
+secondary:
+    primary
+      {
+        $$ = $1;
+      }
+  | secondary LBRACK expression RBRACK
+      {
+        Node* idx = new Node("IndexExpression","",yylineno);
+        idx->children.push_back($1);
+        idx->children.push_back($3);  
+        $$ = idx;
+      }
+  | secondary DOT LENGTH
+      {
+        Node* len = new Node("LengthExpression","",yylineno);
+        len->children.push_back($1);
+        $$ = len;
+      }
+  | secondary DOT ID
+      {
+        Node* field = new Node("FieldAccess",$3,yylineno);
+        field->children.push_back($1);
+        $$ = field;
+      }
+  | secondary LP opt_args RP
+      {
+        Node* call = new Node("MethodCall","",yylineno);
+        call->children.push_back($1);  
+        if ($3) call->children.push_back($3);
+        $$ = call;
+      }
+  ;
 
 
+expression:
+    expression PLUSOP expression
+      {
+        $$ = new Node("AddExpression", "", yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression MINUSOP expression
+      {
+        $$ = new Node("SubExpression", "", yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression MULTOP expression
+      {
+        $$ = new Node("MultExpression", "", yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression DIVOP expression
+      {
+        $$ = new Node("DivExpression", "", yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression EXPOP expression
+      {
+        $$ = new Node("ExpExpression", "", yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression LEQOP expression
+      {
+        $$ = new Node("LeqExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression GEQOP expression
+      {
+        $$ = new Node("GeqExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression LTOP expression
+      {
+        $$ = new Node("LtExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression GTOP expression
+      {
+        $$ = new Node("GtExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression EQOP expression
+      {
+        $$ = new Node("EqExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression NEQOP expression
+      {
+        $$ = new Node("NeqExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression AND expression
+      {
+        $$ = new Node("AndExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | expression OR expression
+      {
+        $$ = new Node("OrExpression","",yylineno);
+        $$->children.push_back($1);
+        $$->children.push_back($3);
+      }
+  | secondary
+      {
+        $$ = $1;
+      }
+  ;
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Additional helpers for statements and other constructs */
@@ -315,11 +504,18 @@ var:
     $$->children.push_back($4);
   }
   | ID COLON type
-    {
-      $$ = new Node("Var","",yylineno);
-      $$->children.push_back(new Node("Id",$1,yylineno));
-      $$->children.push_back($3);
-    }
+  {
+    $$ = new Node("Var","",yylineno);
+    $$->children.push_back(new Node("Id",$1,yylineno));
+    $$->children.push_back($3);
+  }
+  | var ASSIGNOP expression
+  {
+    Node* a = new Node("AssignStatement", "", yylineno);
+    a->children.push_back($1);
+    a->children.push_back($3);
+    $$ = a;
+  }
  ;
 
 list_content
@@ -335,128 +531,116 @@ list_content
     }
   ;
 
-lvalue:
-    ID
-      {
-        $$ = new Node("Id", $1, yylineno);
-      }
-    | ID LBRACK expression RBRACK
-      {
-        $$ = new Node("IndexExpression","",yylineno);
-        $$->children.push_back(new Node("Id",$1,yylineno));
-        $$->children.push_back($3);
-      }
-    ;
-
-
-
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Statements
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
-statement:  var ASSIGNOP expression
-            {
-              $$ = new Node("AssignStatement", "", yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-          | lvalue ASSIGNOP expression
-            {
-              $$ = new Node("AssignStatement", "", yylineno);
-              $$->children.push_back($1);
-              $$->children.push_back($3);
-            }
-          | var
+stmt_end:
+    NEWLINE
+  ;
+
+statement:
+        var stmt_end
             {
               $$ = new Node("VarDeclaration", "", yylineno);
               $$->children.push_back($1);
             }
-          | PRINT LP lvalue RP
+        | expression ASSIGNOP expression stmt_end
+            {
+              Node* a = new Node("AssignStatement", "", yylineno);
+              a->children.push_back($1);
+              a->children.push_back($3);
+              $$ = a;
+            }
+        | PRINT LP expression RP stmt_end
             {
               $$ = new Node("PrintStatement", "", yylineno);
               $$->children.push_back($3);
             }
-          | READ LP ID RP
+        | READ LP expression RP stmt_end
             {
               $$ = new Node("ReadStatement", "", yylineno);
-              $$->children.push_back(new Node("Id", $3, yylineno));
+              $$->children.push_back($3);
             }
-          | RETURN expression
+        | RETURN expression stmt_end
             {
               $$ = new Node("ReturnStatement", "", yylineno);
               $$->children.push_back($2);
             }
-          | FOR LP var COMMA expression COMMA ID ASSIGNOP expression RP program_block
+        | FOR LP var COMMA expression COMMA ID ASSIGNOP expression RP program_block
             {
               $$ = new Node("ForStatement", "", yylineno);
-              
               Node* start_condition = new Node("start_condition", "", yylineno);
               start_condition->children.push_back($3);
               $$->children.push_back(start_condition);
-              
+
               Node* end_condition = new Node("end_condition", "", yylineno);
               end_condition->children.push_back($5);
               $$->children.push_back(end_condition);
-              
+
               Node* step = new Node("step", "", yylineno);
               step->children.push_back(new Node("Id", $7, yylineno));
               step->children.push_back($9);
               $$->children.push_back(step);
-              
+
               Node* end = new Node("end", "", yylineno);
               end->children.push_back($11);
               $$->children.push_back(end);
             }
-          | FOR LP ID ASSIGNOP expression COMMA expression COMMA ID ASSIGNOP expression RP program_block
+        | FOR LP ID ASSIGNOP expression COMMA expression COMMA ID ASSIGNOP expression RP program_block
             {
               $$ = new Node("ForStatement", "", yylineno);
-              
+
               Node* start_condition = new Node("start_condition", "", yylineno);
               start_condition->children.push_back(new Node("Id", $3, yylineno));
               start_condition->children.push_back($5);
               $$->children.push_back(start_condition);
-              
+
               Node* end_condition = new Node("end_condition", "", yylineno);
               end_condition->children.push_back($7);
               $$->children.push_back(end_condition);
-              
+
               Node* step = new Node("step", "", yylineno);
               step->children.push_back(new Node("Id", $9, yylineno));
               step->children.push_back($11);
               $$->children.push_back(step);
-              
+
               Node* block = new Node("block", "", yylineno);
               block->children.push_back($13);
               $$->children.push_back(block);
             }
-          | IF LP expression RP program_block
+        | IF LP expression RP program_block
             {
               $$ = new Node("IfStatement", "", yylineno);
-              
+
               Node* condition = new Node("condition", "", yylineno);
               condition->children.push_back($3);
               $$->children.push_back(condition);
-              
+
               Node* then_branch = new Node("then_branch", "", yylineno);
               then_branch->children.push_back($5);
               $$->children.push_back(then_branch);
             }
-          | IF LP expression RP program_block ELSE program_block
+        | IF LP expression RP program_block ELSE program_block
             {
               $$ = new Node("IfStatement", "", yylineno);
-              
+
               Node* condition = new Node("condition", "", yylineno);
               condition->children.push_back($3);
               $$->children.push_back(condition);
-              
+
               Node* then_branch = new Node("then_branch", "", yylineno);
               then_branch->children.push_back($5);
               $$->children.push_back(then_branch);
-              
+
               Node* else_branch = new Node("else_branch", "", yylineno);
               else_branch->children.push_back($7);
               $$->children.push_back(else_branch);
             }
-          ;
+        | expression stmt_end 
+            {
+              $$ = new Node("ExpressionStatement", "", yylineno);
+              $$->children.push_back($1);
+            }
+        ;
 %%
-

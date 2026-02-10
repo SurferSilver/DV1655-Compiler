@@ -16,6 +16,7 @@
 "int"                  {if(USE_LEX_ONLY) {printf("TYPE_INT ");} else {return yy::parser::make_TYPE_INT(yytext);}}
 "float"                {if(USE_LEX_ONLY) {printf("TYPE_FLOAT ");} else {return yy::parser::make_TYPE_FLOAT(yytext);}}
 "length"                {if(USE_LEX_ONLY) {printf("LENGTH ");} else {return yy::parser::make_LENGTH(yytext);}}
+"class"                {if(USE_LEX_ONLY) {printf("CLASS ");} else {return yy::parser::make_CLASS(yytext);}}
 
 "("                     {if(USE_LEX_ONLY) {printf("LP ");} else {return yy::parser::make_LP(yytext);}}
 ")"                     {if(USE_LEX_ONLY) {printf("RP ");} else {return yy::parser::make_RP(yytext);}}
@@ -49,10 +50,11 @@
 
 0|[1-9][0-9]*           {if(USE_LEX_ONLY) {printf("INT ");} else {return yy::parser::make_INT(yytext);}}
 [0-9]+"."[0-9]*         {if (USE_LEX_ONLY) {printf("FLOAT ");} else {return yy::parser::make_FLOAT(yytext);}}
-["a-zA-Z_"]["a-zA-Z0-9_"]*   {if(USE_LEX_ONLY) {printf("ID ");} else {return yy::parser::make_ID(yytext);}}
+[a-zA-Z_][a-zA-Z0-9_]*  {if(USE_LEX_ONLY) {printf("ID ");} else {return yy::parser::make_ID(yytext);}}
 
-[ \t\n\r]+              {}
-"//"[^\n]*              {}
+\n                    {if (USE_LEX_ONLY) {printf("NEWLINE ");} else {return yy::parser::make_NEWLINE(yytext);}}
+[ \t\r]+               {}
+"//"[^\n]*             {}
 
 .                       { if(!lexical_errors) fprintf(stderr, "Lexical errors found! See the logs below: \n"); fprintf(stderr,"\t@error at line %d. Character %s is not recognized\n", yylineno, yytext); lexical_errors = 1;}
 <<EOF>>                  {return yy::parser::make_END();}
