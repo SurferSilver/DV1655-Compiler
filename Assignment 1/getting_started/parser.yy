@@ -137,7 +137,7 @@
 %type <Node *> secondary
 %type <Node *> opt_for_init
 %type <Node *> opt_for_condition
-
+%type <Node *> opt_stmt_end
 
 %type <Node *> params
 %type <Node *> opt_params
@@ -156,23 +156,19 @@ root:
 
 
 program:
-    opt_class_list opt_newlines entry
+    opt_class_list entry
   {
     Node* prog = new Node("Program","",yylineno);
     if ($1) prog->children.push_back($1);
-    prog->children.push_back($3);
+    prog->children.push_back($2);
     $$ = prog;
   }
-  | opt_class_list opt_newlines
+  | opt_class_list
   {
     Node* prog = new Node("Program","",yylineno);
     if ($1) prog->children.push_back($1);
     $$ = prog;
   }
-  ;
-
-opt_newlines:
-  | opt_newlines NEWLINE
   ;
 
 
@@ -186,7 +182,7 @@ opt_class_list:
   ;
 
 class_list:
-    CLASS ID class_block 
+    CLASS ID class_block stmt_end
       {
         Node* list = new Node("ClassList","",yylineno);
         Node* cls  = new Node("Class",$2,yylineno);
@@ -194,7 +190,7 @@ class_list:
         list->children.push_back(cls);
         $$ = list;
       }
-  | class_list CLASS ID class_block 
+  | class_list CLASS ID class_block stmt_end
       {
         $$ = $1;
         Node* cls = new Node("Class",$3,yylineno);
@@ -211,25 +207,10 @@ class_block:
   ;
 
 class_content:
-      {
-        $$ = new Node("ClassContent","", yylineno);
-      }
-  | class_content var 
-      {
-        $$ = $1;
-        $$->children.push_back($2);
-      }
-  | class_content method 
-      {
-        $$ = $1;
-        $$->children.push_back($2);
-      }
-  | class_content NEWLINE
-      {
-        $$ = $1;
-      }
+    /* empty */                    { $$ = new Node("ClassContent","", yylineno); }
+  | class_content var stmt_end     { $$ = $1; $$->children.push_back($2); }
+  | class_content method stmt_end  { $$ = $1; $$->children.push_back($2); }
   ;
-
 
 /*------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Entry point and program structure
@@ -253,10 +234,8 @@ program_block:
   ;
 
 block_content:
-    statement                      { $$ = new Node("BlockContent","", yylineno); $$->children.push_back($1); }
-  | block_content statement        { $$ = $1; $$->children.push_back($2); }
-  | NEWLINE                        { $$ = new Node("BlockContent","", yylineno); }
-  | block_content NEWLINE          { $$ = $1; }
+  /* empty */                               { $$ = new Node("BlockContent","", yylineno); }
+  | block_content statement                  { $$ = $1; $$->children.push_back($2); }
   ;
 
 
@@ -569,10 +548,16 @@ opt_for_condition:
 
 stmt_end:
     NEWLINE
+  | stmt_end NEWLINE
+  ;
+
+opt_stmt_end:
+    { $$ = nullptr; }
+  | opt_stmt_end NEWLINE
   ;
 
 statement:
-        program_block
+        program_block opt_stmt_end
             {
               $$ = $1;
             }
