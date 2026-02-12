@@ -1,0 +1,7 @@
+volatile a : float := 4.3
+b : int
+c : boolean := true
+
+main(): int {
+  return 0
+}

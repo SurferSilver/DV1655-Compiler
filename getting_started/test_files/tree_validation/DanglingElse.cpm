@@ -1,21 +1,26 @@
 class AST {
-    TestIfElse : int() {
+    TestIfElse() : int {
       volatile A : boolean := false
       volatile B : boolean := true
   
       // The following if-statements should generate the same tree.
   
-      if (A)
-        if (B)
+      if (A) {
+        if (B) {
           B := true
-        else
+        }
+        else {
           B := false
+        }
+      }
   
       if (A) {
-        if (B)
+        if (B) {
           B := true
-        else
+        }
+        else {
           A := false
+        }
       }
   
       return 1

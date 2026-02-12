@@ -41,6 +41,10 @@
 %token <std::string>FLOAT
 %token <std::string>TYPE_INT
 %token <std::string>TYPE_FLOAT
+%token <std::string>TYPE_BOOLEAN
+%token <std::string>TYPE_VOID
+%token <std::string>TRUE
+%token <std::string>FALSE
 %token <std::string>ASSIGNOP
 %token <std::string>MAIN
 %token <std::string>VOLATILE
@@ -97,11 +101,12 @@
 
 %nonassoc LOWER_THAN_ELSE
 %nonassoc ELSE
-%left AND OR
+%left OR
+%left AND
 %nonassoc LEQOP GEQOP LTOP GTOP EQOP NEQOP
 %left PLUSOP MINUSOP
 %left MULTOP DIVOP
-%left EXPOP
+%left EXPOP NOTOP
 %left LENGTH
 %right ASSIGNOP
 
@@ -129,10 +134,8 @@
 %type <Node *> opt_class_list
 %type <Node *> class_content
 %type <Node *> class_block
-
 %type <Node *> method
 
-/* oklart */
 %type <Node *> primary
 %type <Node *> secondary
 %type <Node *> opt_for_init
@@ -247,6 +250,7 @@ block_content:
 base_type:
     TYPE_INT                                { $$ = new Node("Type", $1, yylineno); }
   | TYPE_FLOAT                              { $$ = new Node("Type", $1, yylineno); }
+  | TYPE_BOOLEAN                            { $$ = new Node("Type", $1, yylineno); }
 ;
 
 type:
@@ -259,6 +263,10 @@ type:
         $$ = new Node("Type", $1->value + "[]", yylineno);
       }
   | ID
+      {
+        $$ = new Node("Type", $1, yylineno);
+      }
+  | TYPE_VOID
       {
         $$ = new Node("Type", $1, yylineno);
       }
@@ -344,6 +352,14 @@ primary:
       {
         $$ = new Node("Id", $1, yylineno);
       }
+  | TRUE
+      {
+        $$ = new Node("Boolean", $1, yylineno);
+      }
+  | FALSE
+      {
+        $$ = new Node("Boolean", $1, yylineno);
+      }
   | LP expression RP
       {
         $$ = $2;
@@ -374,11 +390,14 @@ secondary:
         len->children.push_back($1);
         $$ = len;
       }
-  | secondary DOT ID
+  | secondary DOT ID LP opt_args RP
       {
         Node* field = new Node("FieldAccess",$3,yylineno);
         field->children.push_back($1);
-        $$ = field;
+        Node* call = new Node("MethodCall","",yylineno);
+        call->children.push_back(field);
+        if ($5) call->children.push_back($5);
+        $$ = call;
       }
   | secondary LP opt_args RP
       {
