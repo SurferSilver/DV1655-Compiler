@@ -2,7 +2,7 @@
 
 A compiler implementation for the CPM (Compiler Programming Model) language, featuring lexical analysis, syntax parsing, and semantic validation.
 
-This is the first stage of the project assignment. The stages are separated in their corresponding branches
+This is the second stage of the project assignment. The stages are separated in their corresponding branches
 
 ## Prerequisites
 
