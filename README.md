@@ -29,6 +29,7 @@ brew install flex bison
 - **`parser.yy`** - Bison parser rules
 - **`main.cc`** - Main compiler driver
 - **`Node.h`** - AST node definitions
+- **`AST_algo.cc`** - Symbol table builder (AST traversal visitor)
 - **`test_files/`** - Test cases organized by type:
   - `valid/` - Valid CPM programs
   - `syntax_errors/` - Programs with syntax errors
@@ -113,6 +114,40 @@ Runs all test suites in sequence.
 make tree
 ```
 Generates `tree.pdf` from `tree.dot` (requires Graphviz `dot` command).
+
+## Symbol Table
+
+The compiler includes a symbol table builder that constructs a hierarchical scope tree from the AST.
+
+### Features:
+- **Hierarchical scope tree** with parent pointers: Global → Class → Method → Block
+- **Separate record types** for different symbol kinds:
+  - `CLASS` - Class declarations
+  - `METHOD` - Method declarations (including `main`)
+  - `VARIABLE` - Variable declarations
+- **Symbol lookup** with scope chain traversal
+- **Graphviz visualization** of the symbol table structure
+
+### Files:
+- **`AST_algo.cc`** - Symbol table builder implementation
+- **`symbol_table.dot`** - Generated Graphviz representation (output)
+- **`symbol_table.pdf`** - Visual PDF of symbol table (output)
+
+### Build and run symbol table analysis:
+```bash
+make symbol-table
+```
+This will:
+1. Compile `AST_algo.cc` into `AST_symbols` executable
+2. Read the AST from `tree.dot` (must exist from a previous compilation)
+3. Build the symbol table and print it to console
+4. Generate `symbol_table.dot` and `symbol_table.pdf`
+
+### Workflow example:
+```bash
+./compiler test.cpm     # Generate tree.dot from source
+make symbol-table       # Build and visualize symbol table
+```
 
 ## Cleaning Up
 

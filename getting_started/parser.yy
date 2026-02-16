@@ -628,9 +628,7 @@ statement:
               step->children.push_back($9);
               $$->children.push_back(step);
 
-              Node* block = new Node("block", "", yylineno);
-              block->children.push_back($11);
-              $$->children.push_back(block);
+              $$->children.push_back($11);
             }
         | IF LP expression RP statement %prec LOWER_THAN_ELSE
             {
