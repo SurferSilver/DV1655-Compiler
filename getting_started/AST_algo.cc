@@ -1,3 +1,7 @@
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Includes and namespace declarations */
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+
 #include <iostream>
 #include <map>
 #include <stack>
@@ -7,7 +11,10 @@
 
 using namespace std;
 
-// SEPARATE RECORD TYPES for Classes, Methods, and Variables
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Symbol types and structures */
+/* Separate record types for Classes, Methods, and Variables */
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
 enum class SymbolKind { CLASS, METHOD, VARIABLE };
 
@@ -28,18 +35,22 @@ struct Symbol {
     }
 };
 
-// SCOPE - Hierarchical scope with pointer to parent
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Scope class */
+/* Hierarchical scope with pointer to parent */
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
 class Scope {
 public:
     int id;
+    int depth;
     string name;                      
     Scope* parent;                    
     vector<Scope*> children;          
     map<string, Symbol> symbols;      
     
-    Scope(int scopeId, string scopeName, Scope* parentScope = nullptr) 
-        : id(scopeId), name(scopeName), parent(parentScope) {
+    Scope(int scopeId, int scopeDepth, string scopeName, Scope* parentScope = nullptr) 
+        : id(scopeId), depth(scopeDepth), name(scopeName), parent(parentScope) {
         if (parent) {
             parent->children.push_back(this);
         }
@@ -67,7 +78,7 @@ public:
     // Print this scope's symbols
     void print(int indent = 0) {
         string pad(indent * 2, ' ');
-        cout << pad << "┌─ Scope " << id << ": " << name;
+        cout << pad << "┌─ Scope " << depth << ": " << name;
         if (parent) {
             cout << " (parent: " << parent->name << ")";
         }
@@ -88,42 +99,48 @@ public:
     }
 };
 
-// VISITOR BASE CLASS
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Visitor base class */
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
 class Visitor {
 public:
     virtual ~Visitor() {}
-    virtual void visit(Node* node) = 0;
+    virtual void visit(Node* node, Node* parent = nullptr) = 0;
 };
 
-// SYMBOL TABLE VISITOR - Builds hierarchical scope tree
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Symbol Table Visitor */
+/* Builds hierarchical scope tree */
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
 class SymbolTableVisitor : public Visitor {
 private:
     Scope* globalScope;
     Scope* currentScope;
+    int currentDepth;
     int scopeCounter;
     
 public:
-    SymbolTableVisitor() : scopeCounter(0) {
-        globalScope = new Scope(scopeCounter++, "Global", nullptr);
+    SymbolTableVisitor() : currentDepth(0), scopeCounter(0) {
+        globalScope = new Scope(scopeCounter++, currentDepth, "Global", nullptr);
         currentScope = globalScope;
     }
     
     ~SymbolTableVisitor() {
     }
     
-    void visit(Node* node) override {
+    void visit(Node* node, Node* parent = nullptr) override {
         if (!node) return;
         
-        // Track Classes as symbols AND create scope
         if (node->type == "Class") {
             string className = node->value;
             if (!className.empty()) {
                 currentScope->addSymbol(className, className, SymbolKind::CLASS);
             }
             string scopeName = "Class:" + className;
-            Scope* newScope = new Scope(scopeCounter++, scopeName, currentScope);
+            currentDepth++;
+            Scope* newScope = new Scope(scopeCounter++, currentDepth, scopeName, currentScope);
             currentScope = newScope;
         }
         else if (node->type == "Method") {
@@ -139,7 +156,8 @@ public:
                 currentScope->addSymbol(methodName, returnType, SymbolKind::METHOD);
             }
             string scopeName = "Method:" + methodName;
-            Scope* newScope = new Scope(scopeCounter++, scopeName, currentScope);
+            currentDepth++;
+            Scope* newScope = new Scope(scopeCounter++, currentDepth, scopeName, currentScope);
             currentScope = newScope;
         }
         else if (node->type == "MainEntry") {
@@ -151,22 +169,38 @@ public:
                 }
             }
             currentScope->addSymbol("main", returnType, SymbolKind::METHOD);
+            string scopeName = "Method:main";
+            currentDepth++;
+            Scope* newScope = new Scope(scopeCounter++, currentDepth, scopeName, currentScope);
+            currentScope = newScope;
         }
         else if (node->type == "BlockContent") {
-            Scope* newScope = new Scope(scopeCounter++, "BlockContent", currentScope);
-            currentScope = newScope;
+            if (parent && (parent->type == "Method" || parent->type == "MainEntry")) {
+            } else {
+                string scopeName = "BlockContent";
+                if (parent && parent->type == "ForStatement") {
+                    scopeName = "ForContent";
+                } else if (parent && parent->type == "IfStatement") {
+                    scopeName = "IfContent";
+                }
+                currentDepth++;
+                Scope* newScope = new Scope(scopeCounter++, currentDepth, scopeName, currentScope);
+                currentScope = newScope;
+            }
         }
         if (node->type == "Var") {
             addVariable(node);
         }
-        // LEFT-TO-RIGHT traversal of all children
         for (auto child : node->children) {
-            visit(child);
+            visit(child, node);
         }
-        if ((node->type == "Class" || node->type == "Method" || 
-             node->type == "BlockContent") 
-            && currentScope->parent) {
+        bool createdScope = (node->type == "Class" || node->type == "Method" || node->type == "MainEntry");
+        if (node->type == "BlockContent" && !(parent && (parent->type == "Method" || parent->type == "MainEntry"))) {
+            createdScope = true;
+        }
+        if (createdScope && currentScope->parent) {
             currentScope = currentScope->parent;
+            currentDepth--;
         }
     }
     
@@ -177,7 +211,6 @@ private:
         string type = "unknown";
         string name = "unknown";
         
-        // Find Type and Id in Var's children
         for (auto child : varNode->children) {
             if (child->type == "Type") {
                 type = child->value;
@@ -205,10 +238,7 @@ public:
         dotOut << "    node [shape=plaintext, fontname=\"Courier\"];" << endl;
         dotOut << endl;
         
-        // Generate nodes for each scope
         generateScopeDotNode(dotOut, globalScope);
-        
-        // Generate edges (parent -> child relationships)
         generateScopeDotEdges(dotOut, globalScope);
         
         dotOut << "}" << endl;
@@ -219,7 +249,7 @@ private:
     void generateScopeDotNode(ofstream& out, Scope* scope) {
         out << "    scope_" << scope->id << " [label=<";
         out << "<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">";
-        out << "<TR><TD COLSPAN=\"3\"><B>" << scope->name << " (Scope " << scope->id << ")</B></TD></TR>";
+        out << "<TR><TD COLSPAN=\"3\"><B>" << scope->name << " (Scope " << scope->depth << ")</B></TD></TR>";
         
         if (!scope->symbols.empty()) {
             out << "<TR><TD><B>Kind</B></TD><TD><B>Name</B></TD><TD><B>Type</B></TD></TR>";
@@ -245,6 +275,11 @@ private:
     }
 };
 
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+/* Main function */
+/* Reads tree.dot and builds symbol table */
+/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
+
 int main() {
     ifstream dotFile("tree.dot");
     if (!dotFile.is_open()) {
@@ -255,15 +290,13 @@ int main() {
     SymbolTableVisitor visitor;
     
     string line;
-    map<string, Node*> nodeMap;  // Map node ids to Node objects
+    map<string, Node*> nodeMap;
     int nextId = 0;
     
     while (getline(dotFile, line)) {
-        // Skip empty lines and digraph declaration
         if (line.empty() || line.find("digraph") != string::npos || 
             line.find("}") == 0) continue;
         
-        // Parse node declarations: nX [label="Type:Value"];
         if (line.find("[label=") != string::npos) {
             size_t nodeIdStart = line.find("n");
             size_t nodeIdEnd = line.find(" ");
@@ -274,13 +307,11 @@ int main() {
                 string nodeId = line.substr(nodeIdStart, nodeIdEnd - nodeIdStart);
                 string label = line.substr(labelStart, labelEnd - labelStart);
                 
-                // Extract node number from nodeId (e.g., "n5" -> 5)
                 int lineNo = 0;
                 if (nodeId.length() > 1) {
                     lineNo = stoi(nodeId.substr(1));
                 }
                 
-                // Parse label: "Type:Value"
                 size_t colonPos = label.find(":");
                 string type = (colonPos != string::npos) 
                     ? label.substr(0, colonPos) 
@@ -289,12 +320,10 @@ int main() {
                     ? label.substr(colonPos + 1) 
                     : "";
                 
-                // Create Node with proper line number
                 Node* node = new Node(type, value, lineNo);
                 nodeMap[nodeId] = node;
             }
         }
-        // Parse edges: nX -> nY
         else if (line.find("->") != string::npos) {
             size_t fromStart = line.find("n");
             size_t fromEnd = line.find(" ");
@@ -321,7 +350,6 @@ int main() {
         return 1;
     }
     
-    // Find root node (usually first one or Program node)
     Node* root = nullptr;
     for (auto& [id, node] : nodeMap) {
         if (node->type == "Program") {
