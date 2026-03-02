@@ -1,4 +1,4 @@
-class Nig {
+class Fig {
   P : int := 10
 }
 
@@ -6,7 +6,6 @@ main() : int {
   x : int := 5
   y : int
   x := 4
-  nig : Nig := Nig()
-  print(nig.P())
+  print(x)
   return 0
 }
