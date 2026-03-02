@@ -4,133 +4,34 @@
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
 #include <iostream>
-#include <map>
-#include <stack>
-#include <fstream>
-#include <vector>
 #include <set>
 #include "Node.h"
-
-using namespace std;
-
-/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
-/* Symbol types and structures */
-/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
-
-enum class SymbolKind { CLASS, METHOD, VARIABLE, PARAMETER };
-
-struct MethodInfo {
-    string returnType;
-    vector<pair<string, string>> parameters;  // (name, type)
-};
-
-struct Symbol {
-    string name;
-    string type;
-    SymbolKind kind;
-    MethodInfo* methodInfo;  // Only for methods
-    
-    Symbol(string n, string t, SymbolKind k) : name(n), type(t), kind(k), methodInfo(nullptr) {}
-    
-    string kindToString() const {
-        switch(kind) {
-            case SymbolKind::CLASS: return "class";
-            case SymbolKind::METHOD: return "method";
-            case SymbolKind::VARIABLE: return "variable";
-            case SymbolKind::PARAMETER: return "parameter";
-            default: return "unknown";
-        }
-    }
-};
-
-/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
-/* Scope class */
-/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
-
-class Scope {
-public:
-    int id;
-    int depth;
-    string name;
-    string className;  // Track which class this scope belongs to
-    Scope* parent;
-    vector<Scope*> children;
-    map<string, Symbol> symbols;
-    
-    Scope(int scopeId, int scopeDepth, string scopeName, Scope* parentScope = nullptr)
-        : id(scopeId), depth(scopeDepth), name(scopeName), parent(parentScope) {
-        if (parent) {
-            parent->children.push_back(this);
-            className = parent->className;
-        }
-    }
-    
-    void addSymbol(const string& name, const string& type, SymbolKind kind) {
-        symbols.emplace(name, Symbol(name, type, kind));
-    }
-    
-    void addMethodSymbol(const string& name, const string& returnType, const vector<pair<string, string>>& params) {
-        Symbol sym(name, returnType, SymbolKind::METHOD);
-        sym.methodInfo = new MethodInfo{returnType, params};
-        symbols.emplace(name, sym);
-    }
-    
-    Symbol* lookup(const string& name) {
-        auto it = symbols.find(name);
-        if (it != symbols.end()) {
-            return &it->second;
-        }
-        if (parent) {
-            return parent->lookup(name);
-        }
-        return nullptr;
-    }
-    
-    Symbol* lookupLocal(const string& name) {
-        auto it = symbols.find(name);
-        if (it != symbols.end()) {
-            return &it->second;
-        }
-        return nullptr;
-    }
-    
-    bool existsInCurrentScope(const string& name) {
-        return symbols.find(name) != symbols.end();
-    }
-};
+#include "SymbolTable.h"
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Semantic Error Reporter */
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 
-class SemanticError {
-public:
-    int line;
-    string message;
-    
-    SemanticError(int l, const string& msg) : line(l), message(msg) {}
-};
-
 class ErrorReporter {
 private:
-    vector<SemanticError> errors;
+    int errorCount_ = 0;
     
 public:
     void report(int line, const string& message) {
-        errors.push_back(SemanticError(line, message));
+        errorCount_++;
         cerr << "Semantic Error (line " << line << "): " << message << endl;
     }
     
-    bool hasErrors() const { return !errors.empty(); }
+    bool hasErrors() const { return errorCount_ > 0; }
     
-    int errorCount() const { return errors.size(); }
+    int errorCount() const { return errorCount_; }
     
     void printSummary() {
-        if (errors.empty()) {
+        if (errorCount_ == 0) {
             cout << "No semantic errors found." << endl;
         } else {
             cout << "\n=== Semantic Analysis Summary ===" << endl;
-            cout << "Total errors: " << errors.size() << endl;
+            cout << "Total errors: " << errorCount_ << endl;
         }
     }
 };
@@ -385,14 +286,11 @@ public:
             checkAssignment(node);
         }
         else if (node->type == "ReturnStatement") {
-            checkReturn(node, parent);
+            checkReturn(node);
             foundReturn = true;
         }
         else if (node->type == "PrintStatement") {
-            // Print can accept int or boolean
-            if (!node->children.empty()) {
-                string exprType = getExpressionType(node->children.front());
-            }
+            checkPrint(node);
         }
         else if (node->type == "IfStatement") {
             checkIfStatement(node);
@@ -597,7 +495,7 @@ private:
         }
     }
     
-    void checkReturn(Node* node, Node* parent) {
+    void checkReturn(Node* node) {
         if (currentMethodReturnType.empty()) return;
         
         if (node->children.empty()) {
@@ -640,6 +538,16 @@ private:
         }
     }
     
+    void checkPrint(Node* node) {
+        if (node->children.empty()) return;
+        
+        string exprType = getExpressionType(node->children.front());
+        
+        if (exprType != "int" && exprType != "boolean" && exprType != "error") {
+            errorReporter.report(node->lineno, "Cannot print type '" + exprType + "': only int and boolean are printable");
+        }
+    }
+    
     void checkIndexExpression(Node* node) {
         if (node->children.size() < 2) return;
         
@@ -673,33 +581,31 @@ private:
         return "error";
     }
     
-    void checkMethodCall(Node* node) {
-        string methodName = "";
-        string targetClass = "";
-        vector<Node*> args;
-        
+    // Helper to extract method call info (methodName, targetClass, args)
+    // Returns true if it's a constructor call
+    bool extractMethodCallInfo(Node* node, string& methodName, string& targetClass, vector<Node*>& args) {
         for (auto child : node->children) {
             if (child->type == "FieldAccess") {
                 methodName = child->value;
-                // Get target class from field access
                 for (auto fc : child->children) {
                     if (fc->type == "Id") {
                         Symbol* sym = currentScope->lookup(fc->value);
                         if (sym) {
                             targetClass = sym->type;
+                        } else if (globalTable.getClassScope(fc->value)) {
+                            targetClass = fc->value;
                         }
                     }
                     else if (fc->type == "MethodCall") {
-                        targetClass = getExpressionType(fc);
+                        targetClass = getMethodCallType(fc);
                     }
                 }
             }
             else if (child->type == "Id") {
-                // Constructor call or simple method call
                 methodName = child->value;
                 if (globalTable.getClassScope(methodName)) {
-                    // Constructor call
                     targetClass = methodName;
+                    return true;  // Constructor call
                 } else if (!currentClassName.empty()) {
                     targetClass = currentClassName;
                 }
@@ -710,33 +616,35 @@ private:
                 }
             }
         }
+        return (targetClass == methodName);  // Constructor if class == method name
+    }
+    
+    void checkMethodCall(Node* node) {
+        string methodName, targetClass;
+        vector<Node*> args;
         
-        // Validate method exists and check arguments
-        if (!targetClass.empty() && !methodName.empty()) {
-            // Check if it's a constructor call
-            if (targetClass == methodName) {
-                return;  // Constructor call is valid
-            }
-            
-            Symbol* method = globalTable.lookupMethodInClass(targetClass, methodName);
-            if (!method) {
-                errorReporter.report(node->lineno, "Undefined method: '" + methodName + "' in class '" + targetClass + "'");
-            } else if (method->methodInfo) {
-                // Check argument count
-                if (args.size() != method->methodInfo->parameters.size()) {
-                    errorReporter.report(node->lineno, "Wrong number of arguments for method '" + methodName + 
-                        "': expected " + to_string(method->methodInfo->parameters.size()) + 
-                        ", got " + to_string(args.size()));
-                } else {
-                    // Check argument types
-                    for (size_t i = 0; i < args.size(); i++) {
-                        string argType = getExpressionType(args[i]);
-                        string expectedType = method->methodInfo->parameters[i].second;
-                        if (argType != expectedType && argType != "error") {
-                            errorReporter.report(args[i]->lineno, "Invalid argument type for parameter '" + 
-                                method->methodInfo->parameters[i].first + "': expected '" + 
-                                expectedType + "', got '" + argType + "'");
-                        }
+        if (extractMethodCallInfo(node, methodName, targetClass, args)) {
+            return;  // Constructor call is valid
+        }
+        
+        if (targetClass.empty() || methodName.empty()) return;
+        
+        Symbol* method = globalTable.lookupMethodInClass(targetClass, methodName);
+        if (!method) {
+            errorReporter.report(node->lineno, "Undefined method: '" + methodName + "' in class '" + targetClass + "'");
+        } else if (method->methodInfo) {
+            if (args.size() != method->methodInfo->parameters.size()) {
+                errorReporter.report(node->lineno, "Wrong number of arguments for method '" + methodName + 
+                    "': expected " + to_string(method->methodInfo->parameters.size()) + 
+                    ", got " + to_string(args.size()));
+            } else {
+                for (size_t i = 0; i < args.size(); i++) {
+                    string argType = getExpressionType(args[i]);
+                    string expectedType = method->methodInfo->parameters[i].second;
+                    if (argType != expectedType && argType != "error") {
+                        errorReporter.report(args[i]->lineno, "Invalid argument type for parameter '" + 
+                            method->methodInfo->parameters[i].first + "': expected '" + 
+                            expectedType + "', got '" + argType + "'");
                     }
                 }
             }
@@ -815,42 +723,32 @@ private:
         return "unknown";
     }
     
-    string checkArithmeticOp(Node* node) {
+    // Helper for binary operations
+    string checkBinaryOp(Node* node, const string& expectedType, const string& opName) {
         if (node->children.size() < 2) return "error";
         
         auto it = node->children.begin();
         string leftType = getExpressionType(*it++);
         string rightType = getExpressionType(*it);
         
-        if (leftType != "int" && leftType != "error") {
-            errorReporter.report(node->lineno, "Invalid operand type for arithmetic operation: expected 'int', got '" + leftType + "'");
+        if (leftType != expectedType && leftType != "error") {
+            errorReporter.report(node->lineno, "Invalid operand type for " + opName + ": expected '" + expectedType + "', got '" + leftType + "'");
             return "error";
         }
-        if (rightType != "int" && rightType != "error") {
-            errorReporter.report(node->lineno, "Invalid operand type for arithmetic operation: expected 'int', got '" + rightType + "'");
+        if (rightType != expectedType && rightType != "error") {
+            errorReporter.report(node->lineno, "Invalid operand type for " + opName + ": expected '" + expectedType + "', got '" + rightType + "'");
             return "error";
         }
         
-        return "int";
+        return expectedType;
+    }
+    
+    string checkArithmeticOp(Node* node) {
+        return checkBinaryOp(node, "int", "arithmetic operation");
     }
     
     string checkLogicalOp(Node* node) {
-        if (node->children.size() < 2) return "error";
-        
-        auto it = node->children.begin();
-        string leftType = getExpressionType(*it++);
-        string rightType = getExpressionType(*it);
-        
-        if (leftType != "boolean" && leftType != "error") {
-            errorReporter.report(node->lineno, "Invalid operand type for logical operation: expected 'boolean', got '" + leftType + "'");
-            return "error";
-        }
-        if (rightType != "boolean" && rightType != "error") {
-            errorReporter.report(node->lineno, "Invalid operand type for logical operation: expected 'boolean', got '" + rightType + "'");
-            return "error";
-        }
-        
-        return "boolean";
+        return checkBinaryOp(node, "boolean", "logical operation");
     }
     
     string checkComparisonOp(Node* node) {
@@ -909,47 +807,14 @@ private:
     }
     
     string getMethodCallType(Node* node) {
-        string methodName = "";
-        string targetClass = "";
+        string methodName, targetClass;
+        vector<Node*> args;  // unused but needed for helper
         
-        for (auto child : node->children) {
-            if (child->type == "FieldAccess") {
-                methodName = child->value;
-                for (auto fc : child->children) {
-                    if (fc->type == "Id") {
-                        Symbol* sym = currentScope->lookup(fc->value);
-                        if (sym) {
-                            targetClass = sym->type;
-                        } else {
-                            // Could be a class name for constructor
-                            if (globalTable.getClassScope(fc->value)) {
-                                targetClass = fc->value;
-                            }
-                        }
-                    }
-                    else if (fc->type == "MethodCall") {
-                        targetClass = getMethodCallType(fc);
-                    }
-                }
-            }
-            else if (child->type == "Id") {
-                methodName = child->value;
-                // Constructor call
-                if (globalTable.getClassScope(methodName)) {
-                    return methodName;
-                }
-                // Method in current class
-                if (!currentClassName.empty()) {
-                    targetClass = currentClassName;
-                }
-            }
+        if (extractMethodCallInfo(node, methodName, targetClass, args)) {
+            return targetClass;  // Constructor returns the class type
         }
         
         if (!targetClass.empty() && !methodName.empty()) {
-            if (targetClass == methodName) {
-                return targetClass;  // Constructor
-            }
-            
             Symbol* method = globalTable.lookupMethodInClass(targetClass, methodName);
             if (method) {
                 return method->type;
@@ -961,135 +826,9 @@ private:
     
 public:
     void generateSymbolTableDot() {
-        ofstream dotOut("symbol_table.dot");
-        if (!dotOut.is_open()) {
-            cerr << "Error: Could not create symbol_table.dot" << endl;
-            return;
-        }
-        
-        dotOut << "digraph ScopeTree {" << endl;
-        dotOut << "    rankdir=TB;" << endl;
-        dotOut << "    node [shape=plaintext, fontname=\"Courier\"];" << endl;
-        dotOut << endl;
-        
-        generateScopeDotNode(dotOut, globalScope);
-        generateScopeDotEdges(dotOut, globalScope);
-        
-        dotOut << "}" << endl;
-        dotOut.close();
-    }
-    
-private:
-    void generateScopeDotNode(ofstream& out, Scope* scope) {
-        out << "    scope_" << scope->id << " [label=<";
-        out << "<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">";
-        out << "<TR><TD COLSPAN=\"3\"><B>" << scope->name << " (Scope " << scope->depth << ")</B></TD></TR>";
-        
-        if (!scope->symbols.empty()) {
-            out << "<TR><TD><B>Kind</B></TD><TD><B>Name</B></TD><TD><B>Type</B></TD></TR>";
-            for (auto& [name, sym] : scope->symbols) {
-                out << "<TR><TD>" << sym.kindToString() << "</TD><TD>" << sym.name << "</TD><TD>" << sym.type << "</TD></TR>";
-            }
-        } else {
-            out << "<TR><TD COLSPAN=\"3\">(empty)</TD></TR>";
-        }
-        
-        out << "</TABLE>>];" << endl;
-        
-        for (auto child : scope->children) {
-            generateScopeDotNode(out, child);
-        }
-    }
-    
-    void generateScopeDotEdges(ofstream& out, Scope* scope) {
-        for (auto child : scope->children) {
-            out << "    scope_" << scope->id << " -> scope_" << child->id << ";" << endl;
-            generateScopeDotEdges(out, child);
-        }
+        generateSymbolTableDotFile(globalScope);
     }
 };
-
-/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
-/* Tree Parser - Builds AST from tree.dot */
-/* ------------------------------------------------------------------------------------------------------------------------------------------------- */
-
-Node* parseTreeDot(const string& filename) {
-    ifstream dotFile(filename);
-    if (!dotFile.is_open()) {
-        cerr << "Error: Could not open " << filename << endl;
-        return nullptr;
-    }
-    
-    string line;
-    map<string, Node*> nodeMap;
-    
-    while (getline(dotFile, line)) {
-        if (line.empty() || line.find("digraph") != string::npos || 
-            line.find("}") == 0) continue;
-        
-        if (line.find("[label=") != string::npos) {
-            size_t nodeIdStart = line.find("n");
-            size_t nodeIdEnd = line.find(" ");
-            size_t labelStart = line.find("\"") + 1;
-            size_t labelEnd = line.rfind("\"");
-            
-            if (nodeIdStart != string::npos && labelStart < labelEnd) {
-                string nodeId = line.substr(nodeIdStart, nodeIdEnd - nodeIdStart);
-                string label = line.substr(labelStart, labelEnd - labelStart);
-                
-                int lineNo = 0;
-                if (nodeId.length() > 1) {
-                    lineNo = stoi(nodeId.substr(1));
-                }
-                
-                size_t colonPos = label.find(":");
-                string type = (colonPos != string::npos) 
-                    ? label.substr(0, colonPos) 
-                    : label;
-                string value = (colonPos != string::npos) 
-                    ? label.substr(colonPos + 1) 
-                    : "";
-                
-                Node* node = new Node(type, value, lineNo);
-                nodeMap[nodeId] = node;
-            }
-        }
-        else if (line.find("->") != string::npos) {
-            size_t fromStart = line.find("n");
-            size_t fromEnd = line.find(" ");
-            size_t toStart = line.rfind("n");
-            
-            if (fromStart != string::npos && toStart != string::npos && fromEnd != string::npos) {
-                string fromId = line.substr(fromStart, fromEnd - fromStart);
-                string toId = line.substr(toStart);
-                while (!toId.empty() && (toId.back() == ' ' || toId.back() == '\n' || toId.back() == '\r')) {
-                    toId.pop_back();
-                }
-                
-                if (nodeMap.count(fromId) && nodeMap.count(toId)) {
-                    nodeMap[fromId]->children.push_back(nodeMap[toId]);
-                }
-            }
-        }
-    }
-    
-    dotFile.close();
-    
-    // Find root
-    Node* root = nullptr;
-    for (auto& [id, node] : nodeMap) {
-        if (node->type == "Program") {
-            root = node;
-            break;
-        }
-    }
-    
-    if (!root && !nodeMap.empty()) {
-        root = nodeMap.begin()->second;
-    }
-    
-    return root;
-}
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------- */
 /* Main */

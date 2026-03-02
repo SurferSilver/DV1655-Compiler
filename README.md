@@ -50,6 +50,38 @@ This will:
 2. Generate `parser.tab.cc` and `parser.tab.h` from `parser.yy` using bison
 3. Compile and link all sources into the `compiler` executable
 
+## Workflow
+
+The complete compilation and analysis workflow consists of the following steps:
+
+```bash
+# 1. Build the compiler (parser + lexer)
+make compiler
+
+# 2. Parse a source file → generates tree.dot
+./compiler test.cpm
+
+# 3. (Optional) Generate AST visualization
+make tree                # creates tree.pdf
+
+# 4. Build the symbol table tool
+make AST_symbols
+
+# 5. Generate symbol table from the AST
+make symbol-table        # runs AST_symbols, creates symbol_table.pdf
+
+# 6. Build the semantic analyzer
+make semantic
+
+# 7. Run semantic analysis (type checking)
+./semantic               # reads tree.dot, reports semantic errors
+```
+
+Each step depends on the previous:
+- Steps 3-7 require `tree.dot` from step 2
+- Step 5 requires `AST_symbols` from step 4
+- Step 7 requires `semantic` from step 6
+
 ## Running the Compiler
 
 ### Compile a single file:

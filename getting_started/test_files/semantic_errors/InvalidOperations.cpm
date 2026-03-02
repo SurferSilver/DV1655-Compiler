@@ -37,8 +37,10 @@ class MyClass {
     return true
   }
 
-  operator_test_work(): boolean {
+  operator_test_work(): boolean { 
+    
     // correct examples (should pass semantic checks)
+    
     i1 := i1 + i2
     i1 := ia1[1] + ia2[2]
     i1 := c1.get_trash()[2] + i2

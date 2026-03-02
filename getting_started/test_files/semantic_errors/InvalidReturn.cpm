@@ -6,7 +6,6 @@ class MyClass {
   x: int
   y: boolean
   z: int[]
-  xyz: MyClass
 
   xyFunc(): int { //@error - semantic (invalid return type: expected int, got boolean)
     return y

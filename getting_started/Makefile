@@ -29,7 +29,6 @@ semantic-check: compiler semantic
 	@./compiler $(file) > /dev/null
 	@./semantic
 
-# Run semantic check with verbose compiler output
 semantic-check-verbose: compiler semantic
 	./compiler $(file)
 	./semantic

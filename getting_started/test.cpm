@@ -1,7 +1,12 @@
-volatile a : float := 4.3
-b : int
-c : boolean := true
+class Nig {
+  P : int := 10
+}
 
-main(): int {
+main() : int {
+  x : int := 5
+  y : int
+  x := 4
+  nig : Nig := Nig()
+  print(nig.P())
   return 0
 }
