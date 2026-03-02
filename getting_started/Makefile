@@ -4,6 +4,9 @@ compiler: lex.yy.c parser.tab.o main.cc
 AST_symbols: AST_algo.cc Node.h
 	g++ -g -w -o AST_symbols AST_algo.cc -std=c++14
 
+semantic: Semantic_Analysis.cc Node.h
+	g++ -g -w -o semantic Semantic_Analysis.cc -std=c++14
+
 parser.tab.o: parser.tab.cc
 	g++ -g -w -c parser.tab.cc -std=c++14
 
@@ -20,8 +23,19 @@ symbol-table: AST_symbols tree.dot
 	@./AST_symbols
 	@dot -Tpdf symbol_table.dot -o symbol_table.pdf
 
+# Semantic analysis: ./compiler file.cpm && ./semantic
+# Or use: make semantic-check file=test.cpm
+semantic-check: compiler semantic
+	@./compiler $(file) > /dev/null
+	@./semantic
+
+# Run semantic check with verbose compiler output
+semantic-check-verbose: compiler semantic
+	./compiler $(file)
+	./semantic
+
 clean:
-	rm -f parser.tab.* lex.yy.c* compiler AST_symbols stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf
+	rm -f parser.tab.* lex.yy.c* compiler AST_symbols semantic stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf
 	rm -R compiler.dSYM
 
 test:

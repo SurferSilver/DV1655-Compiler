@@ -238,7 +238,7 @@ program_block:
 
 block_content:
   /* empty */                               { $$ = new Node("BlockContent","", yylineno); }
-  | block_content statement                  { $$ = $1; $$->children.push_back($2); }
+  | block_content statement                 { $$ = $1; $$->children.push_back($2); }
   ;
 
 

@@ -26,7 +26,7 @@
 ")"                     {if(USE_LEX_ONLY) {printf("RP ");} else {return yy::parser::make_RP(yytext);}}
 "["                     {if(USE_LEX_ONLY) {printf("LBRACK ");} else {return yy::parser::make_LBRACK(yytext);}}
 "]"                     {if(USE_LEX_ONLY) {printf("RBRACK ");} else {return yy::parser::make_RBRACK(yytext);}}
-"{"|["{"][\n]+              {if(USE_LEX_ONLY) {printf("LBRACE ");} else {return yy::parser::make_LBRACE(yytext);}}
+"{"([ \t]*("//"[^\n]*)?\n)*[ \t]*  {if(USE_LEX_ONLY) {printf("LBRACE ");} else {return yy::parser::make_LBRACE("{");}}
 "}"                     {if(USE_LEX_ONLY) {printf("RBRACE ");} else {return yy::parser::make_RBRACE(yytext);}}
 
 

@@ -29,7 +29,7 @@ brew install flex bison
 - **`parser.yy`** - Bison parser rules
 - **`main.cc`** - Main compiler driver
 - **`Node.h`** - AST node definitions
-- **`AST_algo.cc`** - Symbol table builder (AST traversal visitor)
+- **`AST_Algo.cc`** - Symbol table builder (AST traversal visitor)
 - **`test_files/`** - Test cases organized by type:
   - `valid/` - Valid CPM programs
   - `syntax_errors/` - Programs with syntax errors
@@ -129,7 +129,7 @@ The compiler includes a symbol table builder that constructs a hierarchical scop
 - **Graphviz visualization** of the symbol table structure
 
 ### Files:
-- **`AST_algo.cc`** - Symbol table builder implementation
+- **`AST_Algo.cc`** - Symbol table builder implementation
 - **`symbol_table.dot`** - Generated Graphviz representation (output)
 - **`symbol_table.pdf`** - Visual PDF of symbol table (output)
 
@@ -138,7 +138,7 @@ The compiler includes a symbol table builder that constructs a hierarchical scop
 make symbol-table
 ```
 This will:
-1. Compile `AST_algo.cc` into `AST_symbols` executable
+1. Compile `AST_Algo.cc` into `AST_symbols` executable
 2. Read the AST from `tree.dot` (must exist from a previous compilation)
 3. Build the symbol table and print it to console
 4. Generate `symbol_table.dot` and `symbol_table.pdf`
