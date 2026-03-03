@@ -196,15 +196,23 @@ inline Node* parseTreeDot(const string& filename) {
             size_t nodeIdStart = line.find("n");
             size_t nodeIdEnd = line.find(" ");
             size_t labelStart = line.find("\"") + 1;
-            size_t labelEnd = line.rfind("\"");
+            size_t labelEnd = line.find("\"", labelStart);
             
             if (nodeIdStart != string::npos && labelStart < labelEnd) {
                 string nodeId = line.substr(nodeIdStart, nodeIdEnd - nodeIdStart);
                 string label = line.substr(labelStart, labelEnd - labelStart);
                 
+                // Parse line number from separate lineno attribute (format: lineno=X)
                 int lineNo = 0;
-                if (nodeId.length() > 1) {
-                    lineNo = stoi(nodeId.substr(1));
+                size_t linenoPos = line.find("lineno=");
+                if (linenoPos != string::npos) {
+                    try {
+                        size_t numStart = linenoPos + 7;  // length of "lineno="
+                        size_t numEnd = line.find_first_of("];, ", numStart);
+                        lineNo = stoi(line.substr(numStart, numEnd - numStart));
+                    } catch (...) {
+                        lineNo = 0;
+                    }
                 }
                 
                 size_t colonPos = label.find(":");

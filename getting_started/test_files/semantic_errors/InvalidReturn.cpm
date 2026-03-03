@@ -41,8 +41,8 @@ main() : int {
   print(MyClass().xzFunc())
   print(MyClass().yxFunc())
   print(MyClass().yzFunc())
-  print(MyClass().zxFunc())
-  print(MyClass().zyFunc())
+  print(MyClass().zxFunc())  //@error - semantic (cannot print int[])
+  print(MyClass().zyFunc())  //@error - semantic (cannot print int[])
   print(MyClass().swFunc())
   return 0
 }

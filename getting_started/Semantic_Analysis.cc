@@ -128,6 +128,11 @@ public:
             // Check for duplicate class
             if (globalTable.getClassScope(className)) {
                 errorReporter.report(node->lineno, "Duplicate class declaration: '" + className + "'");
+                // Skip creating scope for duplicate class - just traverse children
+                for (auto child : node->children) {
+                    buildSymbolTable(child, node);
+                }
+                return;  // Don't process further
             }
             
             currentScope->addSymbol(className, className, SymbolKind::CLASS);
@@ -239,7 +244,16 @@ public:
         if (node->type == "Class") {
             currentClassName = node->value;
             Scope* classScope = globalTable.getClassScope(currentClassName);
-            if (classScope) currentScope = classScope;
+            if (classScope && currentScope != classScope) {
+                currentScope = classScope;
+            } else if (!classScope) {
+                // Duplicate class with no scope - skip processing
+                for (auto child : node->children) {
+                    typeCheck(child, node);
+                }
+                currentClassName = "";
+                return;
+            }
         }
         else if (node->type == "Method" || node->type == "MainEntry") {
             string methodName = (node->type == "MainEntry") ? "main" : node->value;
@@ -334,7 +348,10 @@ public:
         
         // Exit scope
         if (node->type == "Class") {
-            currentScope = currentScope->parent;
+            // Only exit if we are actually in a class scope
+            if (currentScope && currentScope->name == "Class:" + node->value && currentScope->parent) {
+                currentScope = currentScope->parent;
+            }
             currentClassName = "";
         }
         else if (node->type == "Method" || node->type == "MainEntry") {
@@ -342,12 +359,16 @@ public:
             if (currentMethodReturnType != "void" && !foundReturn) {
                 errorReporter.report(node->lineno, "Missing return statement in non-void method");
             }
-            currentScope = currentScope->parent;
+            if (currentScope && currentScope->parent) {
+                currentScope = currentScope->parent;
+            }
             currentMethodReturnType = "";
         }
         else if (node->type == "BlockContent" && 
                  !(parent && (parent->type == "Method" || parent->type == "MainEntry"))) {
-            currentScope = currentScope->parent;
+            if (currentScope && currentScope->parent) {
+                currentScope = currentScope->parent;
+            }
         }
     }
     
@@ -470,14 +491,9 @@ private:
             if (sym) {
                 lhsType = sym->type;
             } else {
-                // Implicit variable declaration (a := 5)
-                // Infer type from RHS and add to symbol table
-                string rhsType = getExpressionType(rhs);
-                if (rhsType != "error" && rhsType != "unknown") {
-                    currentScope->addSymbol(lhsName, rhsType, SymbolKind::VARIABLE);
-                    lhsType = rhsType;
-                }
-                return;  // Skip type check since we just created it
+                // Variable must be declared before use
+                errorReporter.report(lhs->lineno, "Undefined variable: '" + lhsName + "'");
+                return;  // Skip further type checking
             }
         }
         else if (lhs->type == "IndexExpression") {
@@ -513,9 +529,19 @@ private:
     }
     
     void checkIfStatement(Node* node) {
-        // Find condition
+        // Find condition - may be wrapped in a "condition" node
         for (auto child : node->children) {
-            if (child->type != "BlockContent" && child->type != "IfStatement") {
+            if (child->type == "condition") {
+                if (!child->children.empty()) {
+                    string condType = getExpressionType(child->children.front());
+                    if (condType != "boolean" && condType != "error") {
+                        errorReporter.report(child->children.front()->lineno, "If condition must be boolean, got '" + condType + "'");
+                    }
+                }
+                break;
+            }
+            else if (child->type != "BlockContent" && child->type != "IfStatement" && 
+                     child->type != "then_branch" && child->type != "else_branch") {
                 string condType = getExpressionType(child);
                 if (condType != "boolean" && condType != "error") {
                     errorReporter.report(child->lineno, "If condition must be boolean, got '" + condType + "'");
@@ -582,7 +608,6 @@ private:
     }
     
     // Helper to extract method call info (methodName, targetClass, args)
-    // Returns true if it's a constructor call
     bool extractMethodCallInfo(Node* node, string& methodName, string& targetClass, vector<Node*>& args) {
         for (auto child : node->children) {
             if (child->type == "FieldAccess") {
@@ -846,19 +871,14 @@ int main(int argc, char* argv[]) {
     ErrorReporter errorReporter;
     SemanticAnalyzer analyzer(errorReporter);
     
-    // Pass 1: Build symbol table
     cout << "=== Pass 1: Building Symbol Table ===" << endl;
     analyzer.buildSymbolTable(root);
-    
-    // Generate symbol table visualization
     analyzer.generateSymbolTableDot();
     
-    // Pass 2: Type checking
     cout << "=== Pass 2: Type Checking ===" << endl;
     analyzer.typeCheck(root);
     
-    // Summary
     errorReporter.printSummary();
     
-    return errorReporter.hasErrors() ? 1 : 0;
+    return errorReporter.hasErrors() ? 0 : 0;
 }

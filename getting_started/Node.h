@@ -46,7 +46,7 @@ public:
 
   	void generate_tree_content(int &count, ofstream *outStream) {
 	  id = count++;
-	  *outStream << "n" << id << " [label=\"" << type << ":" << value << "\"];" << endl;
+	  *outStream << "n" << id << " [label=\"" << type << ":" << value << "\" lineno=" << lineno << "];" << endl;
 
 	  for (auto i = children.begin(); i != children.end(); i++)
 	  {

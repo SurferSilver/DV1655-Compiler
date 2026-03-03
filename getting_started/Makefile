@@ -1,12 +1,6 @@
 compiler: lex.yy.c parser.tab.o main.cc
 	g++ -g -w -ocompiler parser.tab.o lex.yy.c main.cc -std=c++14
 
-AST_symbols: AST_algo.cc Node.h
-	g++ -g -w -o AST_symbols AST_algo.cc -std=c++14
-
-semantic: Semantic_Analysis.cc Node.h
-	g++ -g -w -o semantic Semantic_Analysis.cc -std=c++14
-
 parser.tab.o: parser.tab.cc
 	g++ -g -w -c parser.tab.cc -std=c++14
 
@@ -19,19 +13,12 @@ lex.yy.c: lexer.flex parser.tab.cc
 tree: 
 	dot -Tpdf tree.dot -otree.pdf
 
-symbol-table: AST_symbols tree.dot
-	@./AST_symbols
-	@dot -Tpdf symbol_table.dot -o symbol_table.pdf
-
-# Semantic analysis: ./compiler file.cpm && ./semantic
-# Or use: make semantic-check file=test.cpm
-semantic-check: compiler semantic
-	@./compiler $(file) > /dev/null
-	@./semantic
-
-semantic-check-verbose: compiler semantic
-	./compiler $(file)
+semantic: Semantic_Analysis.cc Node.h
+	g++ -g -w -o semantic Semantic_Analysis.cc -std=c++14
 	./semantic
+
+symbol-table: symbol_table.dot tree.dot
+	@dot -Tpdf symbol_table.dot -o symbol_table.pdf
 
 clean:
 	rm -f parser.tab.* lex.yy.c* compiler AST_symbols semantic stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf

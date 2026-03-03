@@ -61,6 +61,6 @@ class ClassDatatest {
 main() : int {
   print(MyClass().semantically_incorrect_expressions())
   print(MyClass().operator_test_work())
-  print(ClassDatatest().get_trash())
+  print(ClassDatatest().get_trash()) //@error - semantic (cannot print int[])
   return 0
 }
