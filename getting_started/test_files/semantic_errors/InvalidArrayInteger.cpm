@@ -5,7 +5,7 @@ class A {
 
     num_aux[false] := 2 //@error - semantic (invalid type of array index)
 
-    if (num_aux[a2()] < 1) { //@error - semantic (invalid type of array index)
+    if (num_aux[a2()] < 1) {
       num_aux[0] := 1
     } else {
       num_aux := a2() //@error - semantic (type mismatch: int[] := int)
@@ -19,13 +19,14 @@ class A {
   a2(): int {
     a: int
     a[0] := 2 //@error - semantic (trying to use int as int array)
-    return a
+    return a // @error - semantic (Leading error since 'a' is now 
+             //'error' cannot match return)
   }
 
 }
 
 main() : int {
-  print(A().a1(1))
+  print(A().a1(1)) // @error - semantic (cannot print an object of type 'A')
   print(A().a2())
   return 0
 }

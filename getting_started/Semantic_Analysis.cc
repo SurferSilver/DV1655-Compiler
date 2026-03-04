@@ -132,7 +132,7 @@ public:
                 for (auto child : node->children) {
                     buildSymbolTable(child, node);
                 }
-                return;  // Don't process further
+                return;
             }
             
             currentScope->addSymbol(className, className, SymbolKind::CLASS);
@@ -322,12 +322,11 @@ public:
             checkMethodCall(node);
         }
         
-        // Check for unreachable code after return
-        if (parent && parent->type == "BlockContent") {
+        // Check for unreachable code after return (once per block)
+        if (node->type == "BlockContent") {
             bool afterReturn = false;
-            for (auto child : parent->children) {
+            for (auto child : node->children) {
                 if (afterReturn && child->type != "ReturnStatement") {
-                    // This is a statement after return
                     if (child->type == "AssignStatement" || child->type == "PrintStatement" ||
                         child->type == "VarDeclaration" || child->type == "ExpressionStatement" ||
                         child->type == "IfStatement" || child->type == "ForStatement") {

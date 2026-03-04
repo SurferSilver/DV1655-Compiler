@@ -1,4 +1,4 @@
-class DuplicateIdentifiers { //@error - semantic (Already Declared Class: 'DuplicateIdentifiers')
+class DuplicateIdentifiers {
   a: int
   a: int //@error - semantic (Already Declared variable: 'a')
 
