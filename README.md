@@ -9,7 +9,7 @@ The project is organized using **Git branches** to separate different phases of 
 - **`main`** - Main branch (will be the final version when this project is finished)
 - **`Assignment 1`** - Stage 1, Lexer and Parser
 - **`Assignment 2`** - Stage 2, Semantic Analysis
-- **`Assignment 3`** - Stage 3, -
+- **`Assignment 3`** - Stage 3, Code Generation
 
 
 ## Getting Started
