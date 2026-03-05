@@ -31,7 +31,7 @@ class A {
 
     // --- invalid member access / chaining (type errors) ---
 
-    b := x.a1(y.a1(2).a4()).a2() //@error - semantic (invalid RHS: a2() returns int, cannot assign to boolean)
+    b := x.a1(y.a1(2).a4(5, 4.1, 3)).a2() //@error - semantic (invalid RHS: a2() returns int, cannot assign to boolean)
 
     aa := x.a2().a1(1) //@error - semantic (invalid member 'a1' on return type int of a2())
 

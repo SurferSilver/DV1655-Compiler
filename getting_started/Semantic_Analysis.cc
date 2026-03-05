@@ -340,12 +340,12 @@ public:
             }
         }
         
-        // Recurse
+        // Recursive part
         for (auto child : node->children) {
             typeCheck(child, node);
         }
         
-        // Exit scope
+        // Exit scope for classes and methods
         if (node->type == "Class") {
             // Only exit if we are actually in a class scope
             if (currentScope && currentScope->name == "Class:" + node->value && currentScope->parent) {
@@ -606,7 +606,7 @@ private:
         return "error";
     }
     
-    // Helper to extract method call info (methodName, targetClass, args)
+    // Helper to extract method call
     bool extractMethodCallInfo(Node* node, string& methodName, string& targetClass, vector<Node*>& args) {
         for (auto child : node->children) {
             if (child->type == "FieldAccess") {
@@ -871,13 +871,16 @@ int main(int argc, char* argv[]) {
     SemanticAnalyzer analyzer(errorReporter);
     
     cout << "=== Pass 1: Building Symbol Table ===" << endl;
+    cout << endl;
     analyzer.buildSymbolTable(root);
+    cout << endl;
     analyzer.generateSymbolTableDot();
-    
+    cout << endl;
     cout << "=== Pass 2: Type Checking ===" << endl;
+    cout << endl;
     analyzer.typeCheck(root);
-    
+    cout << endl;
     errorReporter.printSummary();
-    
+    cout << endl;
     return errorReporter.hasErrors() ? 0 : 0;
 }
