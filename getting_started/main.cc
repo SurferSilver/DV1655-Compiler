@@ -1,5 +1,6 @@
 #include <iostream>
 #include "parser.tab.hh"
+#include "IR.h"
 
 extern Node *root;
 extern FILE *yyin;
@@ -63,6 +64,10 @@ int main(int argc, char **argv)
 			{
 				root->print_tree();
 				root->generate_tree();
+
+				IRGenerator irgen;
+				irgen.generate(root);
+				generateCFGDot(irgen.cfg);
 			}
 			catch (...)
 			{

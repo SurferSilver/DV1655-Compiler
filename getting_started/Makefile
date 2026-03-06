@@ -13,6 +13,9 @@ lex.yy.c: lexer.flex parser.tab.cc
 tree: 
 	dot -Tpdf tree.dot -otree.pdf
 
+cfg:
+	dot -Tpdf cfg.dot -ocfg.pdf
+
 semantic: Semantic_Analysis.cc Node.h
 	g++ -g -w -o semantic Semantic_Analysis.cc -std=c++14
 	./semantic
