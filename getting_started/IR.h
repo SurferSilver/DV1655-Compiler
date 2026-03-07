@@ -166,6 +166,7 @@ private:
     string newLabel(const string& prefix = "L") { return prefix + to_string(labelCount++); }
 
     void emit(const TACInstr& instr) {
+        //current can be null if we call from global scope
         if (!current) return;
         current->addInstr(instr);
     }
@@ -177,30 +178,36 @@ private:
     }
 
     void visitClassList(Node* node) {
-        for (auto cls : node->children)           // Class nodes
-            for (auto content : cls->children)    // ClassContent
+        //check for classes in classlist
+        for (auto cls : node->children)
+            //check for contentblock in each class           
+            for (auto content : cls->children)
+                //check for methods in contentblock    
                 for (auto member : content->children)
                     if (member->type == "Method") visitMethod(member);
     }
 
     void visitMainEntry(Node* node) {
+        //create entry in cfg
         current = cfg.newBlock("main");
         cfg.entry = current;
-        // children: Type, BlockContent — skip the Type node
+        //find blockcontent
         for (auto child : node->children)
-            if (child->type != "Type") visitStatement(child);
+            if (child->type == "BlockContent") visitStatement(child);
     }
 
     void visitMethod(Node* node) {
         current = cfg.newBlock(node->value);
         // children: optional ParameterList, Type, BlockContent — skip Type/ParameterList
         for (auto child : node->children)
-            if (child->type != "Type" && child->type != "ParameterList") visitStatement(child);
+            if (child->type == "BlockContent") visitStatement(child);
     }
 
     void visitStatement(Node* node) {
         if (!node) return;
+        //loop through potential blockcontent
         if      (node->type == "BlockContent")    { for (auto c : node->children) visitStatement(c); }
+        //the other cases
         else if (node->type == "VarDeclaration")  visitVarDeclaration(node);
         else if (node->type == "AssignStatement") visitAssign(node);
         else if (node->type == "PrintStatement")  visitPrint(node);
@@ -215,7 +222,7 @@ private:
     }
 
     void visitVarDeclaration(Node* node) {
-        // child is a Var node, which may be an AssignStatement wrapping a Var
+        //volatile is not here it's inside the var node
         for (auto child : node->children)
             visitStatement(child);
     }
@@ -235,12 +242,13 @@ private:
         auto it = node->children.begin();
         Node* lhs = *it++;
         Node* rhs = *it;
+        //evaluate rhs first because if TAC instructions
         string val = visitExpr(rhs);
-        // Array store: list[i] := val
         if (lhs->type == "IndexExpression") {
             auto iit = lhs->children.begin();
             string arr = visitExpr(*iit++);
             string idx = visitExpr(*iit);
+            //finns problem med typ list[i]:= val om val påverkar i
             emit(TACInstr(TACOp::ARRAY_STORE, val, arr, idx));
         } else {
             string dest = lhsName(lhs);
@@ -263,12 +271,12 @@ private:
     }
 
     void visitIf(Node* node) {
-        // children: condition, then_branch, [else_branch]  (each a wrapper node)
         auto it = node->children.begin();
         Node* condWrapper = *it++;
         Node* thenWrapper = (it != node->children.end()) ? *it++ : nullptr;
         Node* elseWrapper = (it != node->children.end()) ? *it   : nullptr;
 
+        //find the conditions inside potential wrapper nodes
         Node* condExpr = (condWrapper && !condWrapper->children.empty()) ? condWrapper->children.front() : nullptr;
         Node* thenStmt = (thenWrapper && !thenWrapper->children.empty()) ? thenWrapper->children.front() : nullptr;
         Node* elseStmt = (elseWrapper && !elseWrapper->children.empty()) ? elseWrapper->children.front() : nullptr;
@@ -276,39 +284,42 @@ private:
         string condVal    = visitExpr(condExpr);
         string labelFalse = newLabel("if_false");
         string labelEnd   = newLabel("if_end");
+        string labelTrue  = newLabel("if_true");
 
         BasicBlock* condBB  = current;
-        BasicBlock* trueBB  = cfg.newBlock(newLabel("if_true"));
+        BasicBlock* trueBB  = cfg.newBlock();
         BasicBlock* falseBB = cfg.newBlock(labelFalse);
         BasicBlock* endBB   = cfg.newBlock(labelEnd);
 
+        //create the conditional jump
         emit(TACInstr(TACOp::JUMP_IFNOT, labelFalse, condVal));
         cfg.addEdge(condBB, trueBB);
         cfg.addEdge(condBB, falseBB);
 
+        //the if true case
         current = trueBB;
         if (thenStmt) visitStatement(thenStmt);
         emit(TACInstr(TACOp::JUMP, labelEnd));
         cfg.addEdge(trueBB, endBB);
 
+        //the if false case, if not else then just jump to end
         current = falseBB;
         if (elseStmt) visitStatement(elseStmt);
         emit(TACInstr(TACOp::JUMP, labelEnd));
         cfg.addEdge(falseBB, endBB);
 
+        //point back to the end, other code can continue
         current = endBB;
     }
 
     void visitFor(Node* node) {
-        // children: start_condition, end_condition, step, body
-        // start_condition and end_condition each wrap one optional child
-        // step wraps: lhs-expr, rhs-expr (the update assignment)
         auto it = node->children.begin();
+
+        //find the conditions inside potential wrapper nodes
         Node* startWrapper = (it != node->children.end()) ? *it++ : nullptr;
         Node* endWrapper   = (it != node->children.end()) ? *it++ : nullptr;
         Node* stepWrapper  = (it != node->children.end()) ? *it++ : nullptr;
         Node* body         = (it != node->children.end()) ? *it   : nullptr;
-
         Node* initStmt = (startWrapper && !startWrapper->children.empty()) ? startWrapper->children.front() : nullptr;
         Node* condExpr = (endWrapper   && !endWrapper->children.empty())   ? endWrapper->children.front()   : nullptr;
 
@@ -316,6 +327,7 @@ private:
         string labelBody = newLabel("for_body");
         string labelEnd  = newLabel("for_end");
 
+        //init and then jump to init
         BasicBlock* initBB = current;
         if (initStmt) visitStatement(initStmt);
 
@@ -339,7 +351,6 @@ private:
         if (body) visitStatement(body);
         breakLabelStack.pop_back();
 
-        // step: two children are lhs-expr and rhs-expr of the update assignment
         if (stepWrapper && stepWrapper->children.size() >= 2) {
             auto sit = stepWrapper->children.begin();
             Node* stepLhs = *sit++;
@@ -361,9 +372,8 @@ private:
         if (node->type == "Id")      return node->value;
         if (node->type == "Int")     return node->value;
         if (node->type == "Float")   return node->value;
-        if (node->type == "Boolean") return node->value; // parser emits "Boolean" with value "true"/"false"
+        if (node->type == "Boolean") return node->value;
 
-        // Parser emits specific expression type names, not generic "BinOp"
         if (node->type == "AddExpression") return emitBinOp(node, TACOp::ADD);
         if (node->type == "SubExpression") return emitBinOp(node, TACOp::SUB);
         if (node->type == "MultExpression")return emitBinOp(node, TACOp::MUL);
@@ -378,7 +388,6 @@ private:
         if (node->type == "AndExpression") return emitBinOp(node, TACOp::AND);
         if (node->type == "OrExpression")  return emitBinOp(node, TACOp::OR);
 
-        // Parser emits "NotExpression", not "UnaryOp"
         if (node->type == "NotExpression") {
             string a = visitExpr(node->children.front());
             string t = newTemp();
@@ -386,7 +395,6 @@ private:
             return t;
         }
 
-        // obj.method(args) — FieldAccess child carries the object, node->value is empty
         if (node->type == "MethodCall") return visitMethodCall(node);
 
         if (node->type == "IndexExpression") {
@@ -406,12 +414,10 @@ private:
         }
 
         if (node->type == "ListExpression") {
-            // children: Type, ListContent (which holds the element expressions)
             auto it = node->children.begin();
             string elemType = (*it)->value; ++it;
             Node* listContent = (it != node->children.end()) ? *it : nullptr;
             string t = newTemp();
-            // Collect elements as a comma-separated string for the TAC operand
             string elems;
             if (listContent) {
                 for (auto elem : listContent->children) {
@@ -423,7 +429,7 @@ private:
             return t;
         }
 
-        // Fallback: recurse into single child (handles wrapper nodes)
+        //recurse into single child
         if (!node->children.empty())
             return visitExpr(node->children.front());
 

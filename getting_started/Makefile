@@ -24,7 +24,7 @@ symbol-table: symbol_table.dot tree.dot
 	@dot -Tpdf symbol_table.dot -o symbol_table.pdf
 
 clean:
-	rm -f parser.tab.* lex.yy.c* compiler AST_symbols semantic stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf
+	rm -f parser.tab.* lex.yy.c* compiler AST_symbols semantic stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf cfg.dot cfg.pdf
 	rm -R compiler.dSYM
 
 test:
