@@ -13,6 +13,8 @@ using namespace std;
 enum class TACOp {
     DECLARE,
     ASSIGN,
+    DECLARE_VOLATILE,
+    ASSIGN_VOLATILE,
     ADD,
     SUB,
     MUL,
@@ -59,8 +61,10 @@ struct TACInstr {
 
     string toString() const {
         switch (op) {
-            case TACOp::DECLARE:     return "declare " + result;
-            case TACOp::ASSIGN:      return result + " = " + arg1;
+            case TACOp::DECLARE:           return "declare " + result;
+            case TACOp::ASSIGN:            return result + " = " + arg1;
+            case TACOp::DECLARE_VOLATILE:  return "declare_volatile " + result;
+            case TACOp::ASSIGN_VOLATILE:   return result + " := " + arg1;
             case TACOp::ADD:         return result + " = " + arg1 + " + " + arg2;
             case TACOp::SUB:         return result + " = " + arg1 + " - " + arg2;
             case TACOp::MUL:         return result + " = " + arg1 + " * " + arg2;
@@ -231,25 +235,40 @@ private:
     }
 
     void visitVarDeclaration(Node* node) {
-        //volatile case is not here it's inside the var node
-        for (auto child : node->children)
+        for (auto child : node->children) {
             if (child->type == "Var") {
-                //2 cases, implicit or assignm inside
+                bool isVolatile = false;
                 string varName;
-                for (auto vchild : child->children)
+                for (auto vchild : child->children) {
+                    if (vchild->type == "Volatile") isVolatile = true;
                     if (vchild->type == "Id") varName = vchild->value;
-                emit(TACInstr(TACOp::DECLARE, varName));
-                emit(TACInstr(TACOp::ASSIGN, varName, "0"));    
-            }
-            else if (child->type == "AssignStatement") {
+                }
+                if (isVolatile) {
+                    emit(TACInstr(TACOp::DECLARE_VOLATILE, varName));
+                    emit(TACInstr(TACOp::ASSIGN_VOLATILE, varName, "0"));
+                } else {
+                    emit(TACInstr(TACOp::DECLARE, varName));
+                    emit(TACInstr(TACOp::ASSIGN, varName, "0"));
+                }
+            } else if (child->type == "AssignStatement") {
                 if (!child->children.empty() && child->children.front()->type == "Var") {
+                    bool isVolatile = false;
                     string varName;
-                    for (auto vchild : child->children.front()->children)
+                    for (auto vchild : child->children.front()->children) {
+                        if (vchild->type == "Volatile") isVolatile = true;
                         if (vchild->type == "Id") varName = vchild->value;
-                    if (!varName.empty()) emit(TACInstr(TACOp::DECLARE, varName));
+                    }
+                    if (!varName.empty()) {
+                        if (isVolatile) {
+                            emit(TACInstr(TACOp::DECLARE_VOLATILE, varName));
+                        } else {
+                            emit(TACInstr(TACOp::DECLARE, varName));
+                        }
+                    }
                 }
                 visitAssign(child);
             }
+        }
     }
 
     void visitRead(Node* node) {
@@ -267,17 +286,25 @@ private:
         auto it = node->children.begin();
         Node* lhs = *it++;
         Node* rhs = *it;
-        //evaluate rhs first because if TAC instructions
         string val = visitExpr(rhs);
         if (lhs->type == "IndexExpression") {
             auto iit = lhs->children.begin();
             string arr = visitExpr(*iit++);
             string idx = visitExpr(*iit);
-            //finns problem med typ list[i]:= val om val påverkar i
             emit(TACInstr(TACOp::ARRAY_STORE, val, arr, idx));
         } else {
             string dest = lhsName(lhs);
-            emit(TACInstr(TACOp::ASSIGN, dest, val));
+            // Check if lhs is a volatile variable
+            bool isVolatile = false;
+            if (lhs->type == "Var") {
+                for (auto vchild : lhs->children)
+                    if (vchild->type == "Volatile") isVolatile = true;
+            }
+            if (!isVolatile && lhs->type != "Var") {
+                // Try to find volatile in parent var declaration
+                // (for assignments to Id, check symbol table if needed)
+            }
+            emit(TACInstr(isVolatile ? TACOp::ASSIGN_VOLATILE : TACOp::ASSIGN, dest, val));
         }
     }
 

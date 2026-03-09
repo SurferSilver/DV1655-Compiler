@@ -90,6 +90,7 @@ double readTokenValue(const string& token,
 } // namespace
 
 int main(int argc, char** argv) {
+    //error handling
     if (argc < 2) {
         cerr << "Usage: interpreter <bytecode_file>" << endl;
         return 1;
@@ -101,6 +102,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    //getall instructions
     vector<string> instructions;
     string line;
     while (getline(file, line)) {
@@ -122,6 +124,7 @@ int main(int argc, char** argv) {
         }
     }
 
+    //initialize runtime components
     stack<double> values;
     map<string, double> globals;
     vector<double> pendingArgs;
@@ -138,6 +141,7 @@ int main(int argc, char** argv) {
 
         const string& op = tokens[0];
 
+        //Execute instruction based on opcode
         try {
             if (op == "HALT") {
                 halted = true;
@@ -150,15 +154,19 @@ int main(int argc, char** argv) {
                 } else {
                     globals[tokens[1]] = 0.0;
                 }
+                
             } else if (op == "PUSH") {
                 if (tokens.size() < 2) throw runtime_error("Missing operand for PUSH");
                 values.push(readTokenValue(tokens[1], globals, callStack));
+            
             } else if (op == "LOAD") {
                 if (tokens.size() < 2) throw runtime_error("Missing operand for LOAD");
                 values.push(readTokenValue(tokens[1], globals, callStack));
+            
             } else if (op == "STORE") {
                 if (tokens.size() < 2) throw runtime_error("Missing operand for STORE");
                 setVarValue(tokens[1], popOrFail(values, op), globals, callStack);
+            
             } else if (op == "GET_PARAM") {
                 if (tokens.size() < 3) throw runtime_error("Missing operands for GET_PARAM");
                 if (callStack.empty()) throw runtime_error("GET_PARAM used outside function call");
@@ -167,6 +175,7 @@ int main(int argc, char** argv) {
                     throw runtime_error("GET_PARAM index out of range");
                 }
                 callStack.back().locals[tokens[1]] = callStack.back().args[idx];
+            
             } else if (op == "ADD" || op == "SUB" || op == "MUL" || op == "DIV" || op == "EXP" ||
                        op == "EQ" || op == "NEQ" || op == "LT" || op == "GT" || op == "LEQ" ||
                        op == "GEQ" || op == "AND" || op == "OR") {
@@ -188,24 +197,31 @@ int main(int argc, char** argv) {
                 else if (op == "GEQ") values.push(lhs >= rhs ? 1.0 : 0.0);
                 else if (op == "AND") values.push((lhs != 0.0 && rhs != 0.0) ? 1.0 : 0.0);
                 else if (op == "OR") values.push((lhs != 0.0 || rhs != 0.0) ? 1.0 : 0.0);
+            
             } else if (op == "NEG" || op == "NOT") {
                 double v = popOrFail(values, op);
                 values.push(op == "NEG" ? -v : (v == 0.0 ? 1.0 : 0.0));
+            
             } else if (op == "PRINT") {
                 cout << popOrFail(values, op) << endl;
+            
             } else if (op == "READ") {
                 if (tokens.size() < 2) throw runtime_error("Missing destination for READ");
                 double input;
                 if (!(cin >> input)) throw runtime_error("Failed to read numeric input");
                 setVarValue(tokens[1], input, globals, callStack);
+            
             } else if (op == "POP") {
                 (void)popOrFail(values, op);
+            
             } else if (op == "DUP") {
                 double v = popOrFail(values, op);
                 values.push(v);
                 values.push(v);
+            
             } else if (op == "PARAM") {
                 pendingArgs.push_back(popOrFail(values, op));
+            
             } else if (op == "CALL") {
                 if (tokens.size() < 3) throw runtime_error("Missing operands for CALL");
                 int argc = stoi(tokens[2]);
@@ -222,6 +238,7 @@ int main(int argc, char** argv) {
                     callStack.emplace_back(args, pc);
                     pc = it->second;
                 }
+            
             } else if (op == "RET" || op == "RETVAL") {
                 double retValue = 0.0;
                 if (op == "RETVAL") {
@@ -237,12 +254,14 @@ int main(int argc, char** argv) {
                     values.push(retValue);
                     pc = returnPc;
                 }
-            } else if (op == "JUMP" || op == "JMP") {
+            
+            } else if (op == "JUMP") {
                 if (tokens.size() < 2) throw runtime_error("Missing label for JUMP");
                 auto it = labels.find(tokens[1]);
                 if (it == labels.end()) throw runtime_error("Unknown label '" + tokens[1] + "'");
                 pc = it->second;
-            } else if (op == "JUMP_IF" || op == "JNZ") {
+            
+            } else if (op == "JUMP_IF") {
                 if (tokens.size() < 2) throw runtime_error("Missing label for JUMP_IF");
                 double cond = popOrFail(values, op);
                 if (cond != 0.0) {
@@ -250,7 +269,8 @@ int main(int argc, char** argv) {
                     if (it == labels.end()) throw runtime_error("Unknown label '" + tokens[1] + "'");
                     pc = it->second;
                 }
-            } else if (op == "JUMP_IFNOT" || op == "JZ") {
+            
+            } else if (op == "JUMP_IFNOT") {
                 if (tokens.size() < 2) throw runtime_error("Missing label for JUMP_IFNOT");
                 double cond = popOrFail(values, op);
                 if (cond == 0.0) {

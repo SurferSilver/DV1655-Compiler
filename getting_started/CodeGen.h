@@ -169,11 +169,31 @@ private:
 				out << "GET_PARAM " << instr.result << " " << instr.arg1 << "\n";
 				break;
 
-			// These TAC ops are not executable in the current stack VM version.
-			case TACOp::ARRAY_LOAD:
-			case TACOp::ARRAY_STORE:
-			case TACOp::LENGTH:
-			case TACOp::NEW_ARRAY:
+            case TACOp::ARRAY_LOAD:
+                emitLoadOperand(instr.arg1, out); 
+                emitLoadOperand(instr.arg2, out); 
+                out << "ARRAY_LOAD\n";
+                if (!instr.result.empty()) out << "STORE " << instr.result << "\n";
+                break;
+
+            case TACOp::ARRAY_STORE:
+                emitLoadOperand(instr.arg1, out); 
+                emitLoadOperand(instr.arg2, out); 
+                emitLoadOperand(instr.result, out);
+                out << "ARRAY_STORE\n";
+                break;
+
+            case TACOp::LENGTH:
+                emitLoadOperand(instr.arg1, out); 
+                out << "LENGTH\n";
+                if (!instr.result.empty()) out << "STORE " << instr.result << "\n";
+                break;
+
+            case TACOp::NEW_ARRAY:
+                emitLoadOperand(instr.arg1, out);
+                out << "NEW_ARRAY\n";
+                if (!instr.result.empty()) out << "STORE " << instr.result << "\n";
+                break;
 				if (!instr.result.empty()) {
 					out << "PUSH 0\n";
 					out << "STORE " << instr.result << "\n";
