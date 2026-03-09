@@ -116,7 +116,6 @@ struct CFG {
     int nextId = 0;
 
     BasicBlock* newBlock(string label = "") {
-        if (label.empty()) label = "B" + to_string(nextId);
         BasicBlock* b = new BasicBlock(nextId++, label);
         blocks.push_back(b);
         return b;
@@ -171,12 +170,6 @@ private:
         current->addInstr(instr);
     }
 
-    void visitNode(Node* node) {
-        if (!node) return;
-        if (node->type == "MainEntry")   visitMainEntry(node);
-        else if (node->type == "Method") visitMethod(node);
-    }
-
     void visitClassList(Node* node) {
         //check for classes in classlist
         for (auto cls : node->children)
@@ -184,7 +177,12 @@ private:
             for (auto content : cls->children)
                 //check for methods in contentblock    
                 for (auto member : content->children)
-                    if (member->type == "Method") visitMethod(member);
+                    if (member->type == "Method"){
+                        current = cfg.newBlock(member->value);
+                        // children: optional ParameterList, Type, BlockContent — skip Type/ParameterList
+                        for (auto child : member->children)
+                            if (child->type == "BlockContent") visitStatement(child);
+                        }   
     }
 
     void visitMainEntry(Node* node) {
@@ -192,13 +190,6 @@ private:
         current = cfg.newBlock("main");
         cfg.entry = current;
         //find blockcontent
-        for (auto child : node->children)
-            if (child->type == "BlockContent") visitStatement(child);
-    }
-
-    void visitMethod(Node* node) {
-        current = cfg.newBlock(node->value);
-        // children: optional ParameterList, Type, BlockContent — skip Type/ParameterList
         for (auto child : node->children)
             if (child->type == "BlockContent") visitStatement(child);
     }
@@ -222,9 +213,18 @@ private:
     }
 
     void visitVarDeclaration(Node* node) {
-        //volatile is not here it's inside the var node
+        //volatile case is not here it's inside the var node
         for (auto child : node->children)
-            visitStatement(child);
+            if (child->type == "Var") {
+                //2 cases, implicit or assignm inside
+                string varName;
+                for (auto vchild : child->children)
+                    if (vchild->type == "Id") varName = vchild->value;
+                emit(TACInstr(TACOp::ASSIGN, varName, "0"));    
+            }
+            else if (child->type == "AssignStatement") {
+                visitAssign(child);
+            }
     }
 
     void visitRead(Node* node) {
@@ -506,8 +506,13 @@ inline void generateCFGDot(const CFG& cfg, const string& filename = "cfg.dot") {
     out << "    node [shape=record fontname=\"Courier\"];\n\n";
 
     for (auto block : cfg.blocks) {
+        // Skip orphan empty blocks (no instructions and no edges)
+        if (block->instrs.empty() && block->successors.empty() && block->predecessors.empty())
+            continue;
+
         // Build the label: block name on top, then one row per TAC instruction
-        out << "    b" << block->id << " [label=\"{" << block->label;
+        string title = block->label.empty() ? "B" + to_string(block->id) : block->label;
+        out << "    b" << block->id << " [label=\"{" << title;
         for (auto& instr : block->instrs) {
             string s = instr.toString();
             // Escape characters that break DOT record labels

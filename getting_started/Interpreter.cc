@@ -15,9 +15,24 @@ using namespace std;
 //      complex memory model is needed, which keeps the implementation minimal.
 
 int main(int argc, char** argv) {
-    // TODO: Open and read the bytecode text file given as argv[1]
-    // WHY: The bytecode lives in a separate file produced by the compiler; the
-    //      interpreter is a standalone binary that takes that file as its only input.
+    if (argc < 2) {
+        cerr << "Usage: interpreter <bytecode_file>" << endl;
+        return 1;
+    }
+
+    ifstream file(argv[1]);
+    if (!file.is_open()) {
+        cerr << "Error: cannot open file '" << argv[1] << "'" << endl;
+        return 1;
+    }
+
+    vector<string> instructions;
+    string line;
+    while (getline(file, line)) {
+        if (!line.empty())
+            instructions.push_back(line);
+    }
+    file.close();
 
     // TODO: For each line, parse the opcode and operands
     // WHY: Text-based bytecode (one instruction per line) lets us use simple string
