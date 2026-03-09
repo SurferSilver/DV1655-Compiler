@@ -11,6 +11,7 @@
 using namespace std;
 
 enum class TACOp {
+    DECLARE,
     ASSIGN,
     ADD,
     SUB,
@@ -40,6 +41,7 @@ enum class TACOp {
     READ,
     LENGTH,
     NEW_ARRAY,
+    GET_PARAM,
 };
 
 /*--------------------------------------------------------------------------------------------------------------------------------*/
@@ -57,6 +59,7 @@ struct TACInstr {
 
     string toString() const {
         switch (op) {
+            case TACOp::DECLARE:     return "declare " + result;
             case TACOp::ASSIGN:      return result + " = " + arg1;
             case TACOp::ADD:         return result + " = " + arg1 + " + " + arg2;
             case TACOp::SUB:         return result + " = " + arg1 + " - " + arg2;
@@ -86,6 +89,7 @@ struct TACInstr {
             case TACOp::READ:        return "read " + result;
             case TACOp::LENGTH:      return result + " = " + arg1 + ".length";
             case TACOp::NEW_ARRAY:   return result + " = new_array " + arg1 + " [" + arg2 + "]";
+            case TACOp::GET_PARAM:   return result + " = param[" + arg1 + "]";
             default:                 return "unknown";
         }
     }
@@ -179,9 +183,23 @@ private:
                 for (auto member : content->children)
                     if (member->type == "Method"){
                         current = cfg.newBlock(member->value);
-                        // children: optional ParameterList, Type, BlockContent — skip Type/ParameterList
-                        for (auto child : member->children)
-                            if (child->type == "BlockContent") visitStatement(child);
+                        int paramIndex = 0;
+                        for (auto child : member->children) {
+                            if (child->type == "ParameterList") {
+                                for (auto param : child->children) {
+                                    if (param->type != "Param") continue;
+                                    for (auto pchild : param->children) {
+                                        if (pchild->type == "Id") {
+                                            emit(TACInstr(TACOp::GET_PARAM, pchild->value, to_string(paramIndex)));
+                                            ++paramIndex;
+                                            break;
+                                        }
+                                    }
+                                }
+                            } else if (child->type == "BlockContent") {
+                                visitStatement(child);
+                            }
+                        }
                         }   
     }
 
@@ -220,9 +238,16 @@ private:
                 string varName;
                 for (auto vchild : child->children)
                     if (vchild->type == "Id") varName = vchild->value;
+                emit(TACInstr(TACOp::DECLARE, varName));
                 emit(TACInstr(TACOp::ASSIGN, varName, "0"));    
             }
             else if (child->type == "AssignStatement") {
+                if (!child->children.empty() && child->children.front()->type == "Var") {
+                    string varName;
+                    for (auto vchild : child->children.front()->children)
+                        if (vchild->type == "Id") varName = vchild->value;
+                    if (!varName.empty()) emit(TACInstr(TACOp::DECLARE, varName));
+                }
                 visitAssign(child);
             }
     }

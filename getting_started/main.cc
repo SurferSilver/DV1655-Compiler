@@ -1,6 +1,7 @@
 #include <iostream>
 #include "parser.tab.hh"
 #include "IR.h"
+#include "CodeGen.h"
 
 extern Node *root;
 extern FILE *yyin;
@@ -65,9 +66,16 @@ int main(int argc, char **argv)
 				root->print_tree();
 				root->generate_tree();
 
+				// Generate CFG from the AST
 				IRGenerator irgen;
 				irgen.generate(root);
 				generateCFGDot(irgen.cfg);
+
+				// Generate bytecode from the CFG
+				BytecodeGenerator bytecodeGen;
+				if (!bytecodeGen.generate(irgen.cfg, "bytecode.txt")) {
+					errCode = errCodes::AST_ERROR;
+				}
 			}
 			catch (...)
 			{

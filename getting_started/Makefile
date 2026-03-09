@@ -13,6 +13,10 @@ lex.yy.c: lexer.flex parser.tab.cc
 tree: 
 	dot -Tpdf tree.dot -otree.pdf
 
+interpreter: Interpreter.cc
+	g++ -g -w -ointerpreter Interpreter.cc -std=c++14
+	./interpreter bytecode.txt
+
 cfg:
 	dot -Tpdf cfg.dot -ocfg.pdf
 
@@ -24,7 +28,7 @@ symbol-table: symbol_table.dot tree.dot
 	@dot -Tpdf symbol_table.dot -o symbol_table.pdf
 
 clean:
-	rm -f parser.tab.* lex.yy.c* compiler AST_symbols semantic stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf cfg.dot cfg.pdf
+	rm -f parser.tab.* lex.yy.c* compiler interpreter AST_symbols semantic stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf cfg.dot cfg.pdf bytecode.txt
 	rm -R compiler.dSYM
 
 test:

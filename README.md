@@ -75,12 +75,20 @@ make semantic
 
 # 7. Run semantic analysis (type checking)
 ./semantic               # reads tree.dot, reports semantic errors
+
+# 8. Make Control-Flow Graph
+make cfg
+
+# 9. Run the interpreter on the Bytecode generated
+make interpreter
 ```
 
 Each step depends on the previous:
 - Steps 3-7 require `tree.dot` from step 2
 - Step 5 requires `AST_symbols` from step 4
 - Step 7 requires `semantic` from step 6
+- Step 8 requires `bytecode.txt` from step 2
+- Step 9 requires `interpreter` from step 9
 
 ## Running the Compiler
 
@@ -144,6 +152,10 @@ Runs all test suites in sequence.
 ### Generate parse tree visualization (PDF):
 ```bash
 make tree
+```
+### Generate Control-Flow Graph
+```bash
+make cfg
 ```
 Generates `tree.pdf` from `tree.dot` (requires Graphviz `dot` command).
 
