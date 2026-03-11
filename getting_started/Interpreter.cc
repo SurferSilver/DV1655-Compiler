@@ -300,32 +300,27 @@ int main(int argc, char** argv) {
                 }
             //Thin Ice, do not walk!
             } else if (op == "NEW_ARRAY") {
-                // For NEW_ARRAY, the size is on the stack, allocate a vector and store its address as a double (pointer cast)
                 if (values.empty()) throw runtime_error("Stack underflow for NEW_ARRAY");
                 int size = static_cast<int>(popOrFail(values, op));
-                // Allocate array and store in a global array table
                 static std::vector<std::vector<double>> arrayTable;
                 arrayTable.emplace_back(size, 0.0);
-                // Store the index of the array in the table as the array reference
                 double arrRef = static_cast<double>(arrayTable.size() - 1);
                 values.push(arrRef);
             } else if (op == "ARRAY_LOAD") {
-                // Pops index and array reference from stack, pushes value at that index
                 if (values.size() < 2) throw runtime_error("Stack underflow for ARRAY_LOAD");
                 int idx = static_cast<int>(popOrFail(values, op));
                 int arrRef = static_cast<int>(popOrFail(values, op));
-                static std::vector<std::vector<double>> arrayTable; // must match NEW_ARRAY
+                static std::vector<std::vector<double>> arrayTable;
                 if (arrRef < 0 || arrRef >= static_cast<int>(arrayTable.size())) throw runtime_error("Invalid array reference in ARRAY_LOAD");
                 auto& arr = arrayTable[arrRef];
                 if (idx < 0 || idx >= static_cast<int>(arr.size())) throw runtime_error("Array index out of bounds in ARRAY_LOAD");
                 values.push(arr[idx]);
             } else if (op == "ARRAY_STORE") {
-                // Pops value, index, array reference from stack, stores value at index
                 if (values.size() < 3) throw runtime_error("Stack underflow for ARRAY_STORE");
                 double val = popOrFail(values, op);
                 int idx = static_cast<int>(popOrFail(values, op));
                 int arrRef = static_cast<int>(popOrFail(values, op));
-                static std::vector<std::vector<double>> arrayTable; // must match NEW_ARRAY
+                static std::vector<std::vector<double>> arrayTable;
                 if (arrRef < 0 || arrRef >= static_cast<int>(arrayTable.size())) throw runtime_error("Invalid array reference in ARRAY_STORE");
                 auto& arr = arrayTable[arrRef];
                 if (idx < 0 || idx >= static_cast<int>(arr.size())) throw runtime_error("Array index out of bounds in ARRAY_STORE");
