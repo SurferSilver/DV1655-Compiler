@@ -87,10 +87,19 @@ private:
 			case TACOp::DECLARE:
 				out << "DECLARE " << instr.result << "\n";
 				break;
+			
+			case TACOp::DECLARE_VOLATILE:
+				out << "DECLARE_VOLATILE " << instr.result << "\n";
+				break;
 
 			case TACOp::ASSIGN:
 				emitLoadOperand(instr.arg1, out);
 				out << "STORE " << instr.result << "\n";
+				break;
+
+			case TACOp::ASSIGN_VOLATILE:
+				emitLoadOperand(instr.arg1, out);
+				out << "STORE_VOLATILE " << instr.result << "\n";
 				break;
 
 			case TACOp::ADD: emitBinary(instr, "ADD", out); break;
@@ -106,12 +115,6 @@ private:
 			case TACOp::GEQ: emitBinary(instr, "GEQ", out); break;
 			case TACOp::AND: emitBinary(instr, "AND", out); break;
 			case TACOp::OR:  emitBinary(instr, "OR", out);  break;
-
-			case TACOp::NEG:
-				emitLoadOperand(instr.arg1, out);
-				out << "NEG\n";
-				out << "STORE " << instr.result << "\n";
-				break;
 
 			case TACOp::NOT:
 				emitLoadOperand(instr.arg1, out);

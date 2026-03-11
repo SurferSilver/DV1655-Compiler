@@ -17,6 +17,9 @@ y.tab.h
 tree.dot
 tree.pdf
 compiler.dSYM/
+cfg.dot
+cfg.pdf
+bytecode.txt
 
 ## Editor and OS files
 *~

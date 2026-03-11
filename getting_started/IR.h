@@ -20,7 +20,6 @@ enum class TACOp {
     MUL,
     DIV,
     EXP,
-    NEG,
     NOT,
     EQ,
     NEQ,
@@ -70,7 +69,6 @@ struct TACInstr {
             case TACOp::MUL:         return result + " = " + arg1 + " * " + arg2;
             case TACOp::DIV:         return result + " = " + arg1 + " / " + arg2;
             case TACOp::EXP:         return result + " = " + arg1 + " ^ " + arg2;
-            case TACOp::NEG:         return result + " = -" + arg1;
             case TACOp::NOT:         return result + " = !" + arg1;
             case TACOp::EQ:          return result + " = " + arg1 + " == " + arg2;
             case TACOp::NEQ:         return result + " = " + arg1 + " != " + arg2;
@@ -287,6 +285,7 @@ private:
         Node* lhs = *it++;
         Node* rhs = *it;
         string val = visitExpr(rhs);
+        // Handle array store
         if (lhs->type == "IndexExpression") {
             auto iit = lhs->children.begin();
             string arr = visitExpr(*iit++);
@@ -294,15 +293,15 @@ private:
             emit(TACInstr(TACOp::ARRAY_STORE, val, arr, idx));
         } else {
             string dest = lhsName(lhs);
-            // Check if lhs is a volatile variable
+            //Check if lhs is a volatile variable
             bool isVolatile = false;
             if (lhs->type == "Var") {
                 for (auto vchild : lhs->children)
                     if (vchild->type == "Volatile") isVolatile = true;
             }
             if (!isVolatile && lhs->type != "Var") {
-                // Try to find volatile in parent var declaration
-                // (for assignments to Id, check symbol table if needed)
+                //Try to find volatile in parent var declaration
+                //(for assignments to Id, check symbol table if needed)
             }
             emit(TACInstr(isVolatile ? TACOp::ASSIGN_VOLATILE : TACOp::ASSIGN, dest, val));
         }
@@ -498,8 +497,8 @@ private:
     }
 
     string visitMethodCall(Node* node) {
-        // children: [FieldAccess|Id], [ArgList]
-        // FieldAccess carries the object; the method name is in its value or the Id value
+        //children: [FieldAccess|Id], [ArgList]
+        //FieldAccess carries the object. the method name is in its value or the Id value
         string methodName;
         vector<string> args;
 
@@ -518,6 +517,7 @@ private:
             emit(TACInstr(TACOp::PARAM, "", a));
 
         string t = newTemp();
+        //Emit the CALL instruction. Jump to next block and link back
         emit(TACInstr(TACOp::CALL, t, methodName, to_string(args.size())));
         return t;
     }
@@ -525,7 +525,7 @@ private:
     string lhsName(Node* lhs) {
         if (!lhs) return "_";
         if (lhs->type == "Id") return lhs->value;
-        // Var node: children are [Volatile?], Id, Type — find the Id
+        //Id, Type — find the Id
         for (auto child : lhs->children)
             if (child->type == "Id") return child->value;
         return lhs->value;
@@ -548,8 +548,6 @@ private:
         return TACOp::ASSIGN;
     }
 };
-
-// TODO: Generate .dot file for CFG
 
 inline void generateCFGDot(const CFG& cfg, const string& filename = "cfg.dot") {
     ofstream out(filename);

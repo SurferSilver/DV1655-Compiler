@@ -87,7 +87,12 @@ double readTokenValue(const string& token,
     return getVarValue(token, globals, callStack);
 }
 
-} // namespace
+}
+
+/*--------------------------------------------------------------------------------------------------------------------------------*/
+// Main
+/*--------------------------------------------------------------------------------------------------------------------------------*/
+
 
 int main(int argc, char** argv) {
     //error handling
@@ -145,10 +150,20 @@ int main(int argc, char** argv) {
         try {
             if (op == "HALT") {
                 halted = true;
+
             } else if (op == "LABEL") {
                 continue;
+
             } else if (op == "DECLARE") {
                 if (tokens.size() < 2) throw runtime_error("Missing variable name for DECLARE");
+                if (!callStack.empty()) {
+                    callStack.back().locals[tokens[1]] = 0.0;
+                } else {
+                    globals[tokens[1]] = 0.0;
+                }
+
+            } else if (op == "DECLARE_VOLATILE") {
+                if (tokens.size() < 2) throw runtime_error("Missing variable name for DECLARE_VOLATILE");
                 if (!callStack.empty()) {
                     callStack.back().locals[tokens[1]] = 0.0;
                 } else {
@@ -166,7 +181,12 @@ int main(int argc, char** argv) {
             } else if (op == "STORE") {
                 if (tokens.size() < 2) throw runtime_error("Missing operand for STORE");
                 setVarValue(tokens[1], popOrFail(values, op), globals, callStack);
-            
+
+            } else if (op == "STORE_VOLATILE") {
+
+                if (tokens.size() < 2) throw runtime_error("Missing operand for STORE_VOLATILE");
+                setVarValue(tokens[1], popOrFail(values, op), globals, callStack);
+
             } else if (op == "GET_PARAM") {
                 if (tokens.size() < 3) throw runtime_error("Missing operands for GET_PARAM");
                 if (callStack.empty()) throw runtime_error("GET_PARAM used outside function call");
@@ -198,9 +218,9 @@ int main(int argc, char** argv) {
                 else if (op == "AND") values.push((lhs != 0.0 && rhs != 0.0) ? 1.0 : 0.0);
                 else if (op == "OR") values.push((lhs != 0.0 || rhs != 0.0) ? 1.0 : 0.0);
             
-            } else if (op == "NEG" || op == "NOT") {
+            } else if (op == "NOT") {
                 double v = popOrFail(values, op);
-                values.push(op == "NEG" ? -v : (v == 0.0 ? 1.0 : 0.0));
+                values.push(v == 0.0 ? 1.0 : 0.0);
             
             } else if (op == "PRINT") {
                 cout << popOrFail(values, op) << endl;
@@ -230,7 +250,7 @@ int main(int argc, char** argv) {
                 }
                 auto it = labels.find(tokens[1]);
                 if (it == labels.end()) {
-                    // Constructors or unresolved symbols currently evaluate to 0.
+                    //not found in labels, noop
                     values.push(0.0);
                 } else {
                     vector<double> args(pendingArgs.end() - argc, pendingArgs.end());
@@ -238,7 +258,7 @@ int main(int argc, char** argv) {
                     callStack.emplace_back(args, pc);
                     pc = it->second;
                 }
-            
+            //Return RET if no return value, otherwise RETVAL 
             } else if (op == "RET" || op == "RETVAL") {
                 double retValue = 0.0;
                 if (op == "RETVAL") {
@@ -278,6 +298,38 @@ int main(int argc, char** argv) {
                     if (it == labels.end()) throw runtime_error("Unknown label '" + tokens[1] + "'");
                     pc = it->second;
                 }
+            //Thin Ice, do not walk!
+            } else if (op == "NEW_ARRAY") {
+                // For NEW_ARRAY, the size is on the stack, allocate a vector and store its address as a double (pointer cast)
+                if (values.empty()) throw runtime_error("Stack underflow for NEW_ARRAY");
+                int size = static_cast<int>(popOrFail(values, op));
+                // Allocate array and store in a global array table
+                static std::vector<std::vector<double>> arrayTable;
+                arrayTable.emplace_back(size, 0.0);
+                // Store the index of the array in the table as the array reference
+                double arrRef = static_cast<double>(arrayTable.size() - 1);
+                values.push(arrRef);
+            } else if (op == "ARRAY_LOAD") {
+                // Pops index and array reference from stack, pushes value at that index
+                if (values.size() < 2) throw runtime_error("Stack underflow for ARRAY_LOAD");
+                int idx = static_cast<int>(popOrFail(values, op));
+                int arrRef = static_cast<int>(popOrFail(values, op));
+                static std::vector<std::vector<double>> arrayTable; // must match NEW_ARRAY
+                if (arrRef < 0 || arrRef >= static_cast<int>(arrayTable.size())) throw runtime_error("Invalid array reference in ARRAY_LOAD");
+                auto& arr = arrayTable[arrRef];
+                if (idx < 0 || idx >= static_cast<int>(arr.size())) throw runtime_error("Array index out of bounds in ARRAY_LOAD");
+                values.push(arr[idx]);
+            } else if (op == "ARRAY_STORE") {
+                // Pops value, index, array reference from stack, stores value at index
+                if (values.size() < 3) throw runtime_error("Stack underflow for ARRAY_STORE");
+                double val = popOrFail(values, op);
+                int idx = static_cast<int>(popOrFail(values, op));
+                int arrRef = static_cast<int>(popOrFail(values, op));
+                static std::vector<std::vector<double>> arrayTable; // must match NEW_ARRAY
+                if (arrRef < 0 || arrRef >= static_cast<int>(arrayTable.size())) throw runtime_error("Invalid array reference in ARRAY_STORE");
+                auto& arr = arrayTable[arrRef];
+                if (idx < 0 || idx >= static_cast<int>(arr.size())) throw runtime_error("Array index out of bounds in ARRAY_STORE");
+                arr[idx] = val;
             } else {
                 throw runtime_error("Unknown opcode '" + op + "'");
             }
