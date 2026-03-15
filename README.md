@@ -4,12 +4,12 @@ A personal repository for the Compiler course assignments at BTH. This project i
 
 ## Repository Layout
 
+
 The project is organized using **Git branches** to separate different phases of compiler development:
 
-- **`main`** - Main branch (will be the final version when this project is finished)
-- **`Assignment 1`** - Stage 1, Lexer and Parser
-- **`Assignment 2`** - Stage 2, Semantic Analysis
-- **`Assignment 3`** - Stage 3, -
+- **`main`** - Main branch (final version)
+- **`Assignment-1`** - Stage 1, Lexer and Parser
+- **`Assignment-2`** - Stage 2, Semantic Analysis
 
 
 ## Getting Started
@@ -20,9 +20,10 @@ The project is organized using **Git branches** to separate different phases of 
    cd DV1655
    ```
 
+
 2. **Switch to the desired branch:**
    ```bash
-   git checkout getting_started
+   git checkout Assignment-1   # or Assignment-2
    ```
 
 3. **Build and test:**
