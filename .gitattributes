@@ -1,0 +1,12 @@
+# Enable GitHub Linguist language detection for all relevant file types
+*.cc linguist-language=C++
+*.h linguist-language=C++
+*.hh linguist-language=C++
+*.flex linguist-language=Lex
+*.yy linguist-language=Yacc
+*.g linguist-language=ANTLR
+*.md linguist-language=Markdown
+*.txt linguist-language=Text
+
+# Exclude test files from language stats (optional)
+getting_started/test_files/* linguist-documentation=true
