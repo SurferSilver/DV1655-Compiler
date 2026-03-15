@@ -1,0 +1,14 @@
+class MissingReturnStatement {
+
+  test(): int {
+    a := 5 //@error - semantic (Undeclared variable: 'a')
+    b := 10 //@error - semantic (Undeclared variable: 'b')
+    // @error - semantic (missing return statement in non-void method)
+  }
+
+}
+
+main() : int {
+  print(MissingReturnStatement().test())
+  return 0
+}

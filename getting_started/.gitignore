@@ -1,0 +1,33 @@
+## Build artifacts
+*.o
+*.obj
+*.exe
+compiler
+a.out
+build/
+bin/
+
+## Bison / Flex generated files
+parser.tab.*
+lex.yy.c
+y.tab.c
+y.tab.h
+
+## Project-specific generated files
+tree.dot
+tree.pdf
+compiler.dSYM/
+cfg.dot
+cfg.pdf
+bytecode.txt
+
+## Editor and OS files
+*~
+*.swp
+.DS_Store
+.vscode/
+.idea/
+
+## Misc
+*.log
+tags

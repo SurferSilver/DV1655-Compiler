@@ -1,0 +1,122 @@
+compiler: lex.yy.c parser.tab.o main.cc
+	g++ -g -w -ocompiler parser.tab.o lex.yy.c main.cc -std=c++14
+
+parser.tab.o: parser.tab.cc
+	g++ -g -w -c parser.tab.cc -std=c++14
+
+parser.tab.cc: parser.yy
+	bison parser.yy
+
+lex.yy.c: lexer.flex parser.tab.cc
+	flex lexer.flex
+
+tree: 
+	dot -Tpdf tree.dot -otree.pdf
+
+interpreter: Interpreter.cc
+	g++ -g -w -ointerpreter Interpreter.cc -std=c++14
+	./interpreter bytecode.txt
+
+cfg:
+	dot -Tpdf cfg.dot -ocfg.pdf
+
+semantic: Semantic_Analysis.cc Node.h
+	g++ -g -w -o semantic Semantic_Analysis.cc -std=c++14
+	./semantic
+
+symbol-table: symbol_table.dot tree.dot
+	@dot -Tpdf symbol_table.dot -o symbol_table.pdf
+
+clean:
+	rm -f parser.tab.* lex.yy.c* compiler interpreter AST_symbols semantic stack.hh position.hh location.hh tree.dot tree.pdf symbol_table.dot symbol_table.pdf cfg.dot cfg.pdf bytecode.txt
+	rm -R compiler.dSYM
+
+test:
+	./compiler test.cpm
+
+compile-valid:
+	./compiler test_files/valid/test$(test).cpm
+
+test-valid:
+	@echo "=== Testing Valid Files ==="
+	@passed=0; failed=0; \
+	for file in test_files/valid/*.cpm; do \
+		echo -n "Testing $$file... "; \
+		if ./compiler $$file > /dev/null 2>&1; then \
+			echo "✓ PASSED"; \
+			passed=$$((passed + 1)); \
+		else \
+			echo "✗ FAILED"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "Valid files: $$passed passed, $$failed failed"
+
+test-syntax-errors:
+	@echo "=== Testing Syntax Error Files ==="
+	@passed=0; failed=0; \
+	for file in test_files/syntax_errors/*.cpm; do \
+		echo -n "Testing $$file... "; \
+		if ./compiler $$file > /dev/null 2>&1; then \
+			echo "✓ PASSED"; \
+			passed=$$((passed + 1)); \
+		else \
+			echo "✗ FAILED"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "Syntax error files: $$passed passed, $$failed failed"
+
+test-semantic-errors:
+	@echo "=== Testing Semantic Error Files ==="
+	@passed=0; failed=0; \
+	for file in test_files/semantic_errors/*.cpm; do \
+		echo -n "Testing $$file... "; \
+		if ./compiler $$file > /dev/null 2>&1; then \
+			echo "✓ PASSED"; \
+			passed=$$((passed + 1)); \
+		else \
+			echo "✗ FAILED"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "Semantic error files: $$passed passed, $$failed failed"
+
+test-lexical-errors:
+	@echo "=== Testing Lexical Error Files ==="
+	@passed=0; failed=0; \
+	for file in test_files/lexical_errors/*.cpm; do \
+		echo -n "Testing $$file... "; \
+		if ./compiler $$file > /dev/null 2>&1; then \
+			echo "✓ PASSED"; \
+			passed=$$((passed + 1)); \
+		else \
+			echo "✗ FAILED"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "Lexical error files: $$passed passed, $$failed failed"
+
+test-tree-validation:
+	@echo "=== Testing Tree Validation Files ==="
+	@passed=0; failed=0; \
+	for file in test_files/tree_validation/*.cpm; do \
+		echo -n "Testing $$file... "; \
+		if ./compiler $$file > /dev/null 2>&1; then \
+			echo "✓ PASSED"; \
+			passed=$$((passed + 1)); \
+		else \
+			echo "✗ FAILED"; \
+			failed=$$((failed + 1)); \
+		fi; \
+	done; \
+	echo ""; \
+	echo "Tree validation files: $$passed passed, $$failed failed"
+
+test-all: test-valid test-syntax-errors test-semantic-errors test-lexical-errors test-tree-validation
+	@echo ""
+	@echo "=== All Tests Complete ==="
