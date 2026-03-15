@@ -7,9 +7,16 @@ A personal repository for the Compiler course assignments at BTH. This project i
 
 The project is organized using **Git branches** to separate different phases of compiler development:
 
+<<<<<<< HEAD
 - **`main`** - Main branch (final version)
 - **`Assignment-1`** - Stage 1, Lexer and Parser
 - **`Assignment-2`** - Stage 2, Semantic Analysis
+=======
+- **`main`** - Main branch (will be the final version when this project is finished)
+- **`Assignment 1`** - Stage 1, Lexer and Parser
+- **`Assignment 2`** - Stage 2, Semantic Analysis
+- **`Assignment 3`** - Stage 3, Code Generation
+>>>>>>> 5e824696b2a97722e45491cccf22dc6eb872f875
 
 
 ## Getting Started
