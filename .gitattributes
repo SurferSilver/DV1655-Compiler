@@ -1,0 +1,10 @@
+# .gitattributes for GitHub Linguist language detection
+
+*.cc linguist-language=C++
+*.h linguist-language=C++
+*.flex linguist-language=Lex
+*.yy linguist-language=Yacc
+*.g linguist-language=Yacc
+*.md linguist-language=Markdown
+test_files/* linguist-documentation=true
+Makefile linguist-language=Makefile
